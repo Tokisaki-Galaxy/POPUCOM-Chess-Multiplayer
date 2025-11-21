@@ -69,12 +69,23 @@ function injectRemoteMarkup() {
 }
 
 function attachExportButton() {
-    if (document.querySelector('.export-btn')) return;
-    const exportBtn = document.createElement('button');
-    exportBtn.className = 'export-btn';
-    exportBtn.innerHTML = '📷 截图';
-    exportBtn.onclick = exportMatchImage;
-    document.body.appendChild(exportBtn);
+    if (!document.querySelector('.github-btn')) {
+        const githubBtn = document.createElement('button');
+        githubBtn.className = 'floating-btn github-btn';
+        githubBtn.innerHTML = '🌟 GitHub 项目';
+        githubBtn.onclick = () => {
+            window.open('https://github.com/Tokisaki-Galaxy/POPUCOM-Chess-Multiplayer', '_blank', 'noopener');
+        };
+        document.body.appendChild(githubBtn);
+    }
+
+    if (!document.querySelector('.export-btn')) {
+        const exportBtn = document.createElement('button');
+        exportBtn.className = 'floating-btn export-btn';
+        exportBtn.innerHTML = '📷 截图';
+        exportBtn.onclick = exportMatchImage;
+        document.body.appendChild(exportBtn);
+    }
 }
 
 async function requestJson(url, options = {}, { allow404 = false } = {}) {

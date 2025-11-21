@@ -300,11 +300,9 @@ input.room-input {
     }
 }
 
-.export-btn {
+.floating-btn {
     position: fixed;
-    bottom: 20px;
     right: 20px;
-    background: #27ae60;
     color: white;
     border: none;
     padding: 12px 24px;
@@ -318,6 +316,25 @@ input.room-input {
     display: flex;
     align-items: center;
     gap: 8px;
+}
+
+.github-btn {
+    bottom: 80px;
+    background: #24292e;
+}
+
+.github-btn:hover {
+    background: #343a40;
+    transform: scale(1.05) translateY(-2px);
+}
+
+.github-btn:active {
+    transform: scale(0.95);
+}
+
+.export-btn {
+    bottom: 20px;
+    background: #27ae60;
 }
 
 .export-btn:hover {
