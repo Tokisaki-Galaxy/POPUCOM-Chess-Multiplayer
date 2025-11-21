@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>泡姆三消棋 (Paom Match-3 Chess)</title>
+    <style>
+        :root {
+            /* 颜色定义 - 对应 Python 版本 */
+            --bg-color: #1c232b;
+            --grid-color: #3c465a;
+            --p1-color: #ff6b6b;
+            --p1-territory: rgba(100, 30, 30, 0.6);
+            --p1-territory-border: rgba(255, 107, 107, 0.3);
+            --p2-color: #6bb2ff;
+            --p2-territory: rgba(30, 60, 100, 0.6);
+            --p2-territory-border: rgba(107, 178, 255, 0.3);
+            --highlight: #ffd700;
+            --text-color: #f0f0f0;
+            --btn-color: #4682b4;
+            --btn-hover: #64a0d2;
+            
+            --cell-size: 50px;
+            --gap-size: 4px;
+        }
+
+        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', system-ui, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 { margin: 0 0 20px 0; font-size: 1.8rem; letter-spacing: 2px; }
+
+        /* 状态栏 */
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 500px;
+            margin-bottom: 15px;
+            background: rgba(0,0,0,0.2);
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-weight: bold;
+        }
+
+        .player-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 12px;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .player-indicator.active {
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+        }
+
+        .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+        .p1-text { color: var(--p1-color); }
+        .p2-text { color: var(--p2-color); }
+        .dot.p1 { background: var(--p1-color); }
+        .dot.p2 { background: var(--p2-color); }
+
+        /* 棋盘 */
+        .board-container {
+            position: relative;
+            padding: 10px;
+            background: #252d38;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(9, 1fr);
+            gap: var(--gap-size);
+            background-color: var(--grid-color);
+            border: 2px solid var(--grid-color);
+        }
+
+        .cell {
+            width: var(--cell-size);
+            height: var(--cell-size);
+            background-color: var(--bg-color);
+            position: relative;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        /* 悬停效果 (仅针对合法空位) */
+        .cell:not(.has-piece):hover {
+            background-color: #2a3544;
+        }
+
+        /* 棋子 (使用伪元素) */
+        .cell::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            width: 70%; height: 70%;
+            border-radius: 50%;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+        }
+
+        .cell.p1::after {
+            background-color: var(--p1-color);
+            transform: translate(-50%, -50%) scale(1);
+        }
+        .cell.p2::after {
+            background-color: var(--p2-color);
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        /* 领地背景 */
+        .cell.territory-p1 { background-color: var(--p1-territory); box-shadow: inset 0 0 0 1px var(--p1-territory-border); }
+        .cell.territory-p2 { background-color: var(--p2-territory); box-shadow: inset 0 0 0 1px var(--p2-territory-border); }
+
+        /* 最后一步高亮 */
+        .cell.last-move::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border: 2px solid var(--highlight);
+            border-radius: 4px;
+            animation: pulse 1.5s infinite;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        /* 下方信息 */
+        .info-panel {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 1.1rem;
+        }
+        
+        .moves-left {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: #888;
+        }
+
+        /* 游戏结束弹窗 */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            z-index: 100;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-overlay.show {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .modal {
+            background: #2c3e50;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            border: 1px solid #4a6075;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.6);
+            transform: translateY(20px);
+            transition: transform 0.3s;
+        }
+        .modal-overlay.show .modal { transform: translateY(0); }
+
+        .winner-text { font-size: 1.5rem; margin-bottom: 15px; font-weight: bold; }
+        .score-detail { margin-bottom: 25px; color: #ccc; }
+
+        button.restart-btn {
+            background: var(--btn-color);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1rem;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            font-family: inherit;
+        }
+
+        button.restart-btn:hover { background: var(--btn-hover); transform: scale(1.05); }
+        button.restart-btn:active { transform: scale(0.95); }
+
+        /* 移动端适配 */
+        @media (max-width: 600px) {
+            :root { --cell-size: 9vw; --gap-size: 2px; }
+            .status-bar { flex-direction: column; align-items: center; gap: 10px; }
+            h1 { font-size: 1.4rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>泡姆三消棋</h1>
+
+    <div class="status-bar">
+        <div class="player-indicator" id="p1-indicator">
+            <span class="dot p1"></span>
+            <span class="p1-text">玩家1 (红): <span id="score-p1">0</span></span>
+        </div>
+        <div class="player-indicator" id="p2-indicator">
+            <span class="dot p2"></span>
+            <span class="p2-text">玩家2 (蓝): <span id="score-p2">0</span></span>
+        </div>
+    </div>
+
+    <div class="board-container">
+        <div class="board" id="game-board">
+            <!-- Cells generated by JS -->
+        </div>
+    </div>
+
+    <div class="info-panel">
+        <div id="turn-text">当前回合: 玩家1</div>
+        <div class="moves-left">剩余步数: <span id="moves-count">50</span></div>
+    </div>
+
+    <!-- Game Over Modal -->
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal">
+            <div class="winner-text" id="winner-text"></div>
+            <div class="score-detail" id="final-score"></div>
+            <button class="restart-btn" onclick="game.reset()">重新开始</button>
+        </div>
+    </div>
+
+<script>
+    const BOARD_SIZE = 9;
+    const MAX_MOVES = 50;
+
+    class Game {
+        constructor() {
+            this.boardElement = document.getElementById('game-board');
+            this.scoreP1El = document.getElementById('score-p1');
+            this.scoreP2El = document.getElementById('score-p2');
+            this.movesEl = document.getElementById('moves-count');
+            this.turnTextEl = document.getElementById('turn-text');
+            this.p1Indicator = document.getElementById('p1-indicator');
+            this.p2Indicator = document.getElementById('p2-indicator');
+            this.modal = document.getElementById('modal-overlay');
+            
+            this.reset();
+        }
+
+        reset() {
+            // 0=空, 1=玩家1, 2=玩家2
+            this.board = Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(0));
+            // 0=无主, 1=玩家1领地, 2=玩家2领地
+            this.territory = Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(0));
+            
+            this.currentPlayer = 1;
+            this.totalMoves = 0;
+            this.gameOver = false;
+            this.lastMovePos = null;
+
+            this.modal.classList.remove('show');
+            this.renderBoard();
+            this.updateUI();
+        }
+
+        renderBoard() {
+            this.boardElement.innerHTML = '';
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.row = r;
+                    cell.dataset.col = c;
+                    cell.onclick = () => this.makeMove(r, c);
+                    this.boardElement.appendChild(cell);
+                }
+            }
+            this.updateBoardVisuals();
+        }
+
+        makeMove(row, col) {
+            if (this.gameOver) return;
+
+            // 检查位置是否已有棋子
+            if (this.board[row][col] !== 0) return;
+
+            // 检查位置是否已被对方占领
+            if (this.territory[row][col] === 3 - this.currentPlayer) return;
+
+            // 落子
+            this.board[row][col] = this.currentPlayer;
+            this.lastMovePos = { row, col };
+            this.totalMoves++;
+
+            // 处理三消逻辑
+            this.processEliminations();
+
+            // 检查游戏结束
+            if (this.totalMoves >= MAX_MOVES) {
+                this.updateBoardVisuals(); // 更新最后一步的视觉效果
+                this.updateUI();
+                this.endGame();
+                return;
+            }
+
+            // 切换玩家
+            this.currentPlayer = 3 - this.currentPlayer;
+            this.updateBoardVisuals();
+            this.updateUI();
+        }
+
+        processEliminations() {
+            const player = this.currentPlayer;
+            const eliminations = [];
+
+            // 检查所有方向的三消
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    // 水平
+                    if (c <= BOARD_SIZE - 3) {
+                        if (this.board[r][c] === player && 
+                            this.board[r][c+1] === player && 
+                            this.board[r][c+2] === player) {
+                            eliminations.push({ type: 'horizontal', start: [r, c], end: [r, c+2] });
+                        }
+                    }
+                    // 垂直
+                    if (r <= BOARD_SIZE - 3) {
+                        if (this.board[r][c] === player && 
+                            this.board[r+1][c] === player && 
+                            this.board[r+2][c] === player) {
+                            eliminations.push({ type: 'vertical', start: [r, c], end: [r+2, c] });
+                        }
+                    }
+                    // 主对角线 (左上 -> 右下)
+                    if (r <= BOARD_SIZE - 3 && c <= BOARD_SIZE - 3) {
+                        if (this.board[r][c] === player && 
+                            this.board[r+1][c+1] === player && 
+                            this.board[r+2][c+2] === player) {
+                            eliminations.push({ type: 'diagonal1', start: [r, c], end: [r+2, c+2] });
+                        }
+                    }
+                    // 副对角线 (右上 -> 左下)
+                    if (r <= BOARD_SIZE - 3 && c >= 2) {
+                        if (this.board[r][c] === player && 
+                            this.board[r+1][c-1] === player && 
+                            this.board[r+2][c-2] === player) {
+                            eliminations.push({ type: 'diagonal2', start: [r, c], end: [r+2, c-2] });
+                        }
+                    }
+                }
+            }
+
+            // 执行消除和领地扩张
+            eliminations.forEach(elim => {
+                this.removeTiles(elim);
+                this.claimLine(elim);
+            });
+        }
+
+        removeTiles({ type, start, end }) {
+            const [r1, c1] = start;
+            const [r2, c2] = end;
+
+            if (type === 'horizontal') {
+                for (let c = c1; c <= c2; c++) this.board[r1][c] = 0;
+            } else if (type === 'vertical') {
+                for (let r = r1; r <= r2; r++) this.board[r][c1] = 0;
+            } else if (type === 'diagonal1') {
+                for (let i = 0; i <= r2 - r1; i++) this.board[r1+i][c1+i] = 0;
+            } else if (type === 'diagonal2') {
+                for (let i = 0; i <= r2 - r1; i++) this.board[r1+i][c1-i] = 0;
+            }
+        }
+
+        claimLine({ type, start, end }) {
+            const opponent = 3 - this.currentPlayer;
+            const player = this.currentPlayer;
+            const [r1, c1] = start;
+            const [r2, c2] = end;
+
+            // 辅助函数：检查边界和对手
+            const isValid = (r, c) => r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE;
+            const isBlocked = (r, c) => this.board[r][c] === opponent;
+
+            // 设置领地
+            const setTerritory = (r, c) => {
+                this.territory[r][c] = player;
+            };
+
+            if (type === 'horizontal') {
+                const r = r1;
+                // 占领三消本身区域
+                for(let c=c1; c<=c2; c++) setTerritory(r, c);
+                
+                // 向左扩散
+                for(let c=c1; c>=0; c--) {
+                    if(isBlocked(r, c)) break;
+                    setTerritory(r, c);
+                    if(c > 0 && isBlocked(r, c-1)) break; // 检查下一格是否阻挡
+                }
+                // 向右扩散
+                for(let c=c2; c<BOARD_SIZE; c++) {
+                    if(isBlocked(r, c)) break;
+                    setTerritory(r, c);
+                    if(c < BOARD_SIZE-1 && isBlocked(r, c+1)) break;
+                }
+            } 
+            else if (type === 'vertical') {
+                const c = c1;
+                // 占领本身
+                for(let r=r1; r<=r2; r++) setTerritory(r, c);
+
+                // 向上
+                for(let r=r1; r>=0; r--) {
+                    if(isBlocked(r, c)) break;
+                    setTerritory(r, c);
+                    if(r > 0 && isBlocked(r-1, c)) break;
+                }
+                // 向下
+                for(let r=r2; r<BOARD_SIZE; r++) {
+                    if(isBlocked(r, c)) break;
+                    setTerritory(r, c);
+                    if(r < BOARD_SIZE-1 && isBlocked(r+1, c)) break;
+                }
+            }
+            else if (type === 'diagonal1') { // 左上 -> 右下
+                // 占领本身
+                for(let i=0; i<=r2-r1; i++) setTerritory(r1+i, c1+i);
+
+                // 向左上
+                let r=r1, c=c1;
+                while(r>=0 && c>=0) {
+                    if(isBlocked(r, c)) break;
+                    setTerritory(r, c);
+                    if(r>0 && c>0 && isBlocked(r-1, c-1)) break;
+                    r--; c--;
+                }
+                // 向右下
+                r=r2; c=c2;
+                while(r<BOARD_SIZE && c<BOARD_SIZE) {
+                    if(isBlocked(r, c)) break;
+                    setTerritory(r, c);
+                    if(r<BOARD_SIZE-1 && c<BOARD_SIZE-1 && isBlocked(r+1, c+1)) break;
+                    r++; c++;
+                }
+            }
+            else if (type === 'diagonal2') { // 右上 -> 左下
+                // 占领本身
+                for(let i=0; i<=r2-r1; i++) setTerritory(r1+i, c1-i);
+
+                // 向右上
+                let r=r1, c=c1;
+                while(r>=0 && c<BOARD_SIZE) {
+                    if(isBlocked(r, c)) break;
+                    setTerritory(r, c);
+                    if(r>0 && c<BOARD_SIZE-1 && isBlocked(r-1, c+1)) break;
+                    r--; c++;
+                }
+                // 向左下
+                r=r2; c=c2;
+                while(r<BOARD_SIZE && c>=0) {
+                    if(isBlocked(r, c)) break;
+                    setTerritory(r, c);
+                    if(r<BOARD_SIZE-1 && c>0 && isBlocked(r+1, c-1)) break;
+                    r++; c--;
+                }
+            }
+        }
+
+        getScores() {
+            let s1 = 0, s2 = 0;
+            for(let r=0; r<BOARD_SIZE; r++) {
+                for(let c=0; c<BOARD_SIZE; c++) {
+                    if(this.territory[r][c] === 1) s1++;
+                    if(this.territory[r][c] === 2) s2++;
+                }
+            }
+            return [s1, s2];
+        }
+
+        updateBoardVisuals() {
+            const cells = document.getElementsByClassName('cell');
+            for(let i=0; i<cells.length; i++) {
+                const r = parseInt(cells[i].dataset.row);
+                const c = parseInt(cells[i].dataset.col);
+                
+                // Reset classes
+                cells[i].className = 'cell';
+                
+                // Piece
+                if(this.board[r][c] === 1) cells[i].classList.add('p1', 'has-piece');
+                if(this.board[r][c] === 2) cells[i].classList.add('p2', 'has-piece');
+                
+                // Territory
+                if(this.territory[r][c] === 1) cells[i].classList.add('territory-p1');
+                if(this.territory[r][c] === 2) cells[i].classList.add('territory-p2');
+
+                // Last move
+                if(this.lastMovePos && this.lastMovePos.row === r && this.lastMovePos.col === c) {
+                    cells[i].classList.add('last-move');
+                }
+            }
+        }
+
+        updateUI() {
+            const [s1, s2] = this.getScores();
+            this.scoreP1El.textContent = s1;
+            this.scoreP2El.textContent = s2;
+            this.movesEl.textContent = MAX_MOVES - this.totalMoves;
+            
+            this.turnTextEl.textContent = `当前回合: ${this.currentPlayer === 1 ? '玩家1 (红)' : '玩家2 (蓝)'}`;
+            this.turnTextEl.style.color = this.currentPlayer === 1 ? 'var(--p1-color)' : 'var(--p2-color)';
+
+            if(this.currentPlayer === 1) {
+                this.p1Indicator.classList.add('active');
+                this.p2Indicator.classList.remove('active');
+            } else {
+                this.p2Indicator.classList.add('active');
+                this.p1Indicator.classList.remove('active');
+            }
+        }
+
+        endGame() {
+            this.gameOver = true;
+            const [s1, s2] = this.getScores();
+            const winnerText = document.getElementById('winner-text');
+            const finalScore = document.getElementById('final-score');
+            
+            let text = "";
+            let color = "";
+            
+            if (s1 > s2) {
+                text = "玩家1 获胜!";
+                color = "var(--p1-color)";
+            } else if (s2 > s1) {
+                text = "玩家2 获胜!";
+                color = "var(--p2-color)";
+            } else {
+                text = "平局!";
+                color = "#fff";
+            }
+
+            winnerText.textContent = text;
+            winnerText.style.color = color;
+            finalScore.textContent = `玩家1: ${s1} 领地 | 玩家2: ${s2} 领地`;
+            
+            this.modal.classList.add('show');
+        }
+    }
+
+    // Start Game
+    const game = new Game();
+</script>
+</body>
+</html>
