@@ -47,12 +47,16 @@
 
 1. 安装依赖：
    ```sh
-   pip install -r requirements.txt  # 或手动安装 flask pygame numpy requests
+  pip install -r requirements.txt  # 或手动安装 flask pygame numpy requests waitress
    ```
 2. 启动服务器（默认 `0.0.0.0:5000`）：
-   ```sh
-   python server.py
-   ```
+  ```sh
+  # 开发模式（Flask 自带调试服务器，可追加 --debug）
+  python server.py
+
+  # 生产模式（Waitress WSGI，更稳定）
+  python server.py --prod
+  ```
 3. 运行客户端并选择模式：
    ```sh
    python client.py
@@ -84,7 +88,7 @@ POPUCOM-Chess/
 ## 常见问题
 
 - **延迟/不同步**：客户端会以 ~0.8s 轮询 [`server.MatchState`](server.py)，可根据部署情况调整 `RemoteGame.poll_interval`。
-- **端口占用**：修改 `server.py` 末尾 `app.run(host, port)`；客户端输入对应地址即可。
+- **端口占用**：运行 `python server.py --host 0.0.0.0 --port 8080 [--prod]` 指定端口/模式，客户端输入对应地址即可。
 - **字符显示异常**：`client.py` 内 `load_font` 已尝试多款中文字体，可自行替换或加入本地字库路径。
 
 祝玩得开心，记得支持泡姆泡姆！

@@ -355,4 +355,18 @@ def reset_match(match_id):
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    import argparse
+
+    parser = argparse.ArgumentParser(description="POPUCOM Chess REST server")
+    parser.add_argument("--host", default="0.0.0.0", help="Host binding")
+    parser.add_argument("--port", type=int, default=5000, help="Listening port")
+    parser.add_argument("--prod", action="store_true", help="Run with Waitress WSGI server")
+    parser.add_argument("--debug", action="store_true", help="Enable Flask debug reloader (dev mode only)")
+    args = parser.parse_args()
+
+    if args.prod:
+        from waitress import serve
+
+        serve(app, host=args.host, port=args.port)
+    else:
+        app.run(host=args.host, port=args.port, debug=args.debug)
