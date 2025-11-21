@@ -12,7 +12,7 @@ const templates = {
                 <button class="menu-btn" onclick="ui.showLobby()">多人在线联机</button>
                 <div class="rules">
                     <p>断线不会导致数据清空，输入相同的房间号就回来了。</p>
-                    <p>由于服务器大小限制，所有对战数据将在每天北京时间(UTC+8) 4:00清空！请及时保存。</p>
+                    <p>由于服务器大小限制，48小时内不活跃的房间将在每天北京时间(UTC+8) 4:00清空！</p>
                     <h2>规则速览</h2>
                     <ul>
                         <li>棋盘大小：9 × 9。</li>
@@ -31,7 +31,7 @@ const templates = {
         <div id="online-lobby" class="screen-overlay hidden">
             <div class="menu-card">
                 <h2>在线大厅</h2>
-                <input type="text" id="room-id" class="room-input" placeholder="输入房间号 (例: 666)" maxlength="10">
+                <input type="text" id="room-id" class="room-input" placeholder="输入房间号 (例: 666ABC)" maxlength="10">
                 <button class="menu-btn" onclick="ui.joinOnlineGame(1)">我是玩家 1 (红 - 先手)</button>
                 <button class="menu-btn" onclick="ui.joinOnlineGame(2)">我是玩家 2 (蓝 - 后手)</button>
                 <button class="menu-btn secondary" onclick="ui.showMainMenu()">返回主菜单</button>
