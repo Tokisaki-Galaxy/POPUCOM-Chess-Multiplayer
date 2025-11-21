@@ -292,8 +292,18 @@ class BaseGame {
         } else {
             statusMsg = `当前回合: 玩家${this.currentPlayer} (${this.currentPlayer === 1 ? '红' : '蓝'})`;
         }
+
+        let statusColor;
+        if (this.gameOver) {
+            if (this.winner === 1) statusColor = 'var(--p1-color)';
+            else if (this.winner === 2) statusColor = 'var(--p2-color)';
+            else statusColor = '#ccc';
+        } else {
+            statusColor = this.currentPlayer === 1 ? 'var(--p1-color)' : 'var(--p2-color)';
+        }
+
         this.turnTextEl.textContent = statusMsg;
-        this.turnTextEl.style.color = this.currentPlayer === 1 ? 'var(--p1-color)' : 'var(--p2-color)';
+        this.turnTextEl.style.color = statusColor;
 
         this.p1Indicator.classList.toggle('active', this.currentPlayer === 1);
         this.p2Indicator.classList.toggle('active', this.currentPlayer === 2);
