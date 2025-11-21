@@ -10,6 +10,20 @@ const templates = {
             <div class="menu-card">
                 <button class="menu-btn" onclick="ui.showLocalGame()">单人练习 / 本地对战</button>
                 <button class="menu-btn" onclick="ui.showLobby()">多人在线联机</button>
+                <div class="rules">
+                    <p>断线不会导致数据清空，输入相同的房间号就回来了。</p>
+                    <p>由于服务器大小限制，所有对战数据将在每天北京时间(UTC+8) 4:00清空！请及时保存。</p>
+                    <h2>规则速览</h2>
+                    <ul>
+                        <li>棋盘大小：9 × 9。</li>
+                        <li>己方三颗棋子连成直线（横 / 竖 / 两种对角线）后，该三颗棋子消除。</li>
+                        <li>形成的那条线以及向两端延伸，直至被敌方棋子阻挡的同方向格子，标记为己方领地。</li>
+                        <li>领地可以被后续对方再次覆盖。</li>
+                        <li>落子只能放在未被敌方占领的格子（即中立格或己方领地）。</li>
+                        <li>若延伸方向遇到敌方棋子，领地延伸立即停止。</li>
+                        <li>双方总共走满 50 步后比较领地格数，多者胜；相同则平局。</li>
+                    </ul>
+                </div>
             </div>
         </div>
     `,
