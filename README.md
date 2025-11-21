@@ -1,8 +1,10 @@
 # POPUCOM 三消棋 (本地 & 在线)
 
+![Serverless](https://img.shields.io/badge/Serverless-Live-FF4F00?logo=serverless&logoColor=white) ![Vercel](https://img.shields.io/badge/Vercel-Deploy-000000?logo=vercel&logoColor=white) ![Supabase](https://img.shields.io/badge/Supabase-DB-3FCF8E?logo=supabase&logoColor=white)
+
 ![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white) ![Pygame](https://img.shields.io/badge/Pygame-2.x-FFCD00?logo=pygame&logoColor=black) ![Flask](https://img.shields.io/badge/Flask-REST-000000?logo=flask&logoColor=white)
 
-泡姆泡姆三消棋的 Python 重制版，现支持本地对战与 RESTful 在线联机。棋逻辑由 [`server.GameEngine`](server.py) 统一复用，客户端 UI 由 [`client.RemoteGame`](client.py) 驱动。
+泡姆泡姆三消棋的重制版，**现推荐使用无服务器（Serverless）部署**，开箱即用。传统 Python 服务器 + 客户端链路仍可使用，但不再推荐普通玩家自行搭建。棋逻辑仍由 [`server.GameEngine`](server.py) 统一复用，Python 客户端 UI 由 [`client.RemoteGame`](client.py) 驱动。
 
 ## 功能亮点
 - ✅ 9×9 棋盘、原汁原味规则与三消占领机制
@@ -10,45 +12,21 @@
 - ✅ 多房间并发、玩家昵称与令牌校验
 - ✅ 直观的 Pygame 棋盘、落子高亮与比分面板
 
-## 架构示意
-<svg viewBox="0 0 600 220" xmlns="http://www.w3.org/2000/svg" width="100%">
-  <style>
-    .node { fill:#1c232b; stroke:#64a0d2; stroke-width:2; rx:12; ry:12; }
-    .text { fill:#f0f0f0; font-family:'Segoe UI', 'Microsoft YaHei', sans-serif; font-size:14px; }
-    .arrow { stroke:#ffd700; stroke-width:2; marker-end:url(#arrowhead); }
-    .label { fill:#ffd700; font-size:12px; }
-  </style>
-  <defs>
-    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="#ffd700"/>
-    </marker>
-  </defs>
-  <rect class="node" x="30" y="60" width="150" height="100"/>
-  <text class="text" x="105" y="110" text-anchor="middle">客户端</text>
-  <text class="text" x="105" y="130" text-anchor="middle">Pygame UI</text>
-
-  <rect class="node" x="420" y="60" width="150" height="100"/>
-  <text class="text" x="495" y="102" text-anchor="middle">Flask 服务器</text>
-  <text class="text" x="495" y="122" text-anchor="middle">MatchState / GameEngine</text>
-
-  <rect class="node" x="220" y="20" width="160" height="70"/>
-  <text class="text" x="300" y="55" text-anchor="middle">REST API</text>
-
-  <rect class="node" x="220" y="130" width="160" height="70"/>
-  <text class="text" x="300" y="165" text-anchor="middle">房间存储</text>
-
-  <line class="arrow" x1="180" y1="110" x2="420" y2="110"/>
-  <text class="label" x="300" y="95" text-anchor="middle">/join · /move · /reset · /matches</text>
-  <line class="arrow" x1="220" y1="60" x2="220" y2="130"/>
-  <line class="arrow" x1="380" y1="60" x2="380" y2="130"/>
-</svg>
-
 ## 快速开始
 
+### Serverless 云端体验（推荐）
+1. 打开 <https://pop.tokisaki.top/> 即可直接游玩，无需安装任何依赖。
+2. 若希望自定义域名或私有部署，可使用 [Vercel](https://vercel.com/) 一键导入本仓库并部署。
+3. 设置 supabase ,保存env。
+4. 访问生成的域名游玩。
+
+> Serverless 版本包含 UI、房间与规则逻辑，默认配置更易于分享；若仅想体验对战，这是首选方式。
+
+### Python 自托管（Legacy，暂不推荐）
 1. 安装依赖：
-   ```sh
+  ```sh
   pip install -r requirements.txt  # 或手动安装 flask pygame numpy requests waitress
-   ```
+  ```
 2. 启动服务器（默认 `0.0.0.0:5000`）：
   ```sh
   # 开发模式（Flask 自带调试服务器，可追加 --debug）
@@ -58,11 +36,11 @@
   python server.py --prod
   ```
 3. 运行客户端并选择模式：
-   ```sh
-   python client.py
-   ```
-   - 选择“本地双人”即可原地对战。
-   - 选择“在线”，输入服务器 IP、玩家昵称与四位房号即可与远端玩家同步对局。
+  ```sh
+  python client.py
+  ```
+  - 选择“本地双人”即可原地对战。
+  - 选择“在线”，输入服务器 IP、玩家昵称与四位房号即可与远端玩家同步对局。
 
 ## REST 接口速览
 

@@ -250,28 +250,49 @@
 
 <script>
     // ==========================================
-    // 配置区域 (请填入你的 Supabase 信息)
+    // 全局变量定义
     // ==========================================
-    const SUPABASE_URL = ''; 
-    const SUPABASE_KEY = ''; 
-    // ==========================================
-
+    let isSystemReady = false;
+    let db = null;
     const BOARD_SIZE = 9;
     const MAX_MOVES = 50;
-    let db = null;
 
-    // 初始化 Supabase
-    if (SUPABASE_URL.includes('项目ID') === false) {
-        // 【修改2】使用 window.supabase 访问库，赋值给 db 变量
-        // 注意：这里确保引用的是 window.supabase (库)
-        if (window.supabase && window.supabase.createClient) {
-            db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        } else {
-            console.error("Supabase 库未加载，请检查网络或 CDN 地址");
+    /**
+     * 核心初始化函数：从 Vercel API 获取环境变量并连接 Supabase
+     */
+    async function initializeSystem() {
+        try {
+            // 1. 请求我们自己创建的 Serverless API
+            // 注意：这个 /api/config 只有在部署到 Vercel 后才存在
+            // 如果你在本地直接双击打开 html，这一步会失败
+            const response = await fetch('/api/config');
+            const config = await response.json();
+
+            if (!config.supabaseUrl || !config.supabaseKey) {
+                throw new Error("未获取到环境变量配置");
+            }
+
+            // 2. 使用获取到的配置初始化 Supabase
+            if (window.supabase && window.supabase.createClient) {
+                db = window.supabase.createClient(config.supabaseUrl, config.supabaseKey);
+                console.log("Supabase 连接成功");
+                isSystemReady = true;
+            } else {
+                console.error("Supabase SDK 库未加载");
+                alert("系统错误：SDK加载失败");
+            }
+
+        } catch (error) {
+            console.error("初始化失败:", error);
+            // 这是一个友好的提示，告诉你在本地直接打开是无法连接 API 的
+            console.log("提示：如果是本地开发，请使用 vercel dev 命令启动，或者手动硬编码 Key 进行测试。");
         }
-    } else {
-        console.warn("请在代码中配置 SUPABASE_URL 和 KEY 才能使用联机功能");
     }
+
+    // 立即执行初始化
+    initializeSystem();
+
+    // ==========================================
 
     /**
      * 游戏核心逻辑基类
@@ -312,7 +333,6 @@
                     cell.className = 'cell';
                     cell.dataset.row = r;
                     cell.dataset.col = c;
-                    // 绑定点击事件到子类的 handleClick
                     cell.onclick = () => this.handleClick(r, c);
                     this.boardElement.appendChild(cell);
                 }
@@ -337,65 +357,45 @@
             }
         }
 
-        // 核心逻辑：计算落子后的状态 (纯计算，不更新UI)
         calculateNextState(row, col, player) {
-            // 深度克隆状态
             const newBoard = JSON.parse(JSON.stringify(this.board));
             const newTerritory = JSON.parse(JSON.stringify(this.territory));
-            
-            // 落子
             newBoard[row][col] = player;
 
-            // 辅助函数
-            const isBlocked = (r, c, opp) => newBoard[r][c] === opp;
-            
-            // 检查消除
-            const eliminations = [];
-            // (这里省略了部分重复代码，复用之前的逻辑，但操作 newBoard)
-            // ... 为保持简洁，这里直接把原逻辑搬过来修改
-            
-            // 临时覆盖 this.board 以复用之前的逻辑 (有点hacky但有效)
             const tempBoard = this.board;
             const tempTerritory = this.territory;
             this.board = newBoard;
             this.territory = newTerritory;
 
-            // 检测所有消除
+            const eliminations = [];
             for (let r = 0; r < BOARD_SIZE; r++) {
                 for (let c = 0; c < BOARD_SIZE; c++) {
-                    // 水平
                     if (c <= BOARD_SIZE - 3 && this.board[r][c] == player && this.board[r][c+1] == player && this.board[r][c+2] == player)
                         eliminations.push({type: 'h', start:[r,c], end:[r,c+2]});
-                    // 垂直
                     if (r <= BOARD_SIZE - 3 && this.board[r][c] == player && this.board[r+1][c] == player && this.board[r+2][c] == player)
                         eliminations.push({type: 'v', start:[r,c], end:[r+2,c]});
-                    // 主对角
                     if (r <= BOARD_SIZE - 3 && c <= BOARD_SIZE - 3 && this.board[r][c] == player && this.board[r+1][c+1] == player && this.board[r+2][c+2] == player)
                         eliminations.push({type: 'd1', start:[r,c], end:[r+2,c+2]});
-                    // 副对角
                     if (r <= BOARD_SIZE - 3 && c >= 2 && this.board[r][c] == player && this.board[r+1][c-1] == player && this.board[r+2][c-2] == player)
                         eliminations.push({type: 'd2', start:[r,c], end:[r+2,c-2]});
                 }
             }
 
-            // 处理消除和领地
             eliminations.forEach(e => {
-                // 1. 消除棋子
                 const [r1, c1] = e.start; const [r2, c2] = e.end;
                 if(e.type=='h') for(let c=c1; c<=c2; c++) this.board[r1][c] = 0;
                 if(e.type=='v') for(let r=r1; r<=r2; r++) this.board[r][c1] = 0;
                 if(e.type=='d1') for(let i=0; i<=r2-r1; i++) this.board[r1+i][c1+i] = 0;
                 if(e.type=='d2') for(let i=0; i<=r2-r1; i++) this.board[r1+i][c1-i] = 0;
 
-                // 2. 扩张领地 (简化版逻辑，确保同步)
                 const opp = 3 - player;
                 const setT = (r, c) => this.territory[r][c] = player;
                 const checkBlock = (r, c) => this.board[r][c] === opp;
                 
                 if(e.type=='h') {
-                    for(let c=c1; c<=c2; c++) setT(r1, c); // 自身
-                    for(let c=c1-1; c>=0; c--) { if(checkBlock(r1, c)) break; setT(r1, c); if(c>0 && checkBlock(r1, c-1)) break; } // 左
-                    for(let c=c2+1; c<BOARD_SIZE; c++) { if(checkBlock(r1, c)) break; setT(r1, c); if(c<BOARD_SIZE-1 && checkBlock(r1, c+1)) break; } // 右
+                    for(let c=c1; c<=c2; c++) setT(r1, c);
+                    for(let c=c1-1; c>=0; c--) { if(checkBlock(r1, c)) break; setT(r1, c); if(c>0 && checkBlock(r1, c-1)) break; }
+                    for(let c=c2+1; c<BOARD_SIZE; c++) { if(checkBlock(r1, c)) break; setT(r1, c); if(c<BOARD_SIZE-1 && checkBlock(r1, c+1)) break; }
                 } else if (e.type=='v') {
                     for(let r=r1; r<=r2; r++) setT(r, c1);
                     for(let r=r1-1; r>=0; r--) { if(checkBlock(r, c1)) break; setT(r, c1); if(r>0 && checkBlock(r-1, c1)) break; }
@@ -415,23 +415,19 @@
                 }
             });
 
-            // 恢复原状态引用
             const finalBoard = this.board;
             const finalTerritory = this.territory;
             this.board = tempBoard;
             this.territory = tempTerritory;
 
-            return {
-                board: finalBoard,
-                territory: finalTerritory
-            };
+            return { board: finalBoard, territory: finalTerritory };
         }
 
         checkWinner() {
             const [s1, s2] = this.getScores();
             if (s1 > s2) return 1;
             if (s2 > s1) return 2;
-            return 0; // 平局
+            return 0;
         }
 
         getScores() {
@@ -462,55 +458,38 @@
         }
     }
 
-    /**
-     * 本地单人/双人模式
-     */
     class LocalGame extends BaseGame {
-        constructor() {
-            super();
-        }
-
+        constructor() { super(); }
         handleClick(row, col) {
             if (this.gameOver) return;
             if (this.board[row][col] !== 0) return;
             if (this.territory[row][col] === 3 - this.currentPlayer) return;
-
-            // 计算状态
             const nextState = this.calculateNextState(row, col, this.currentPlayer);
-            
-            // 应用状态
             this.board = nextState.board;
             this.territory = nextState.territory;
             this.lastMovePos = {row, col};
             this.totalMoves++;
-            
             if (this.totalMoves >= MAX_MOVES) {
                 this.gameOver = true;
                 this.winner = this.checkWinner();
             } else {
                 this.currentPlayer = 3 - this.currentPlayer;
             }
-
             this.updateBoardVisuals();
             this.updateUI();
         }
     }
 
-    /**
-     * 联机模式 (Supabase)
-     */
     class OnlineGame extends BaseGame {
         constructor(roomId, role) {
             super();
             this.roomId = roomId;
-            this.myRole = role; // 1 或 2
+            this.myRole = role;
             this.initOnline();
         }
 
         async initOnline() {
             this.turnTextEl.textContent = "正在连接服务器...";
-            
-            // 1. 获取或创建房间状态
             const { data, error } = await db
                 .from('games')
                 .select('*')
@@ -518,7 +497,6 @@
                 .single();
 
             if (!data && this.myRole === 1) {
-                // 房主创建房间
                 const initialState = {
                     room_id: this.roomId,
                     board: this.board,
@@ -533,18 +511,15 @@
                 location.reload();
                 return;
             } else if (data) {
-                // 同步初始状态
                 this.syncState(data);
             }
 
-            this.init(); // 渲染棋盘
+            this.init(); 
             this.listenForUpdates();
         }
 
-        // 监听数据库变化
         listenForUpdates() {
-            db
-                .channel('game_room')
+            db.channel('game_room')
                 .on('postgres_changes', { 
                     event: 'UPDATE', 
                     schema: 'public', 
@@ -562,18 +537,9 @@
             this.currentPlayer = data.current_player;
             this.lastMovePos = data.last_move_pos;
             this.winner = data.winner;
-            
-            // 简单计算步数（基于棋子总数，可能不精确但够用）
-            let pieces = 0;
-            this.board.forEach(row => row.forEach(c => { if(c!==0) pieces++ }));
-            // 注意：三消会减少棋子，所以这个计数在三消游戏中不完全等于步数
-            // 但为了简化数据库字段，我们这里暂且忽略步数强制结束，或者你可以在数据库加 total_moves 字段
-            // 为了演示，我们主要依据 winner 字段
-            
             if (this.winner !== null) {
                 this.gameOver = true;
             }
-
             this.updateBoardVisuals();
             this.updateUI();
         }
@@ -587,15 +553,9 @@
             if (this.board[row][col] !== 0) return;
             if (this.territory[row][col] === 3 - this.currentPlayer) return;
 
-            // 1. 乐观更新 (先算好)
             const nextState = this.calculateNextState(row, col, this.currentPlayer);
             let nextPlayer = 3 - this.currentPlayer;
             
-            // 2. 检查游戏结束 (这里需要从服务器获取真正的步数，或者我们在客户端做简单的50步限制)
-            // 为简化，我们假设客户端计算是可信的
-            // 实际上应该加一个 moves 字段在 DB
-            
-            // 3. 上传到服务器
             const updateData = {
                 board: nextState.board,
                 territory: nextState.territory,
@@ -604,21 +564,13 @@
                 updated_at: new Date()
             };
 
-            // 检查是否结束 (由于没有同步totalMoves，这里简单判断全盘满了或者双方协商)
-            // 改进：实际上在 DB 加个 moves 字段最好。这里省略。
-
             await db
                 .from('games')
                 .update(updateData)
                 .eq('room_id', this.roomId);
-                
-            // 本地不立即 updateUI，等待服务器推送回来，确保同步一致性
         }
     }
 
-    // ==========================================
-    // UI 控制逻辑
-    // ==========================================
     const ui = {
         showMainMenu: () => {
             document.getElementById('main-menu').classList.remove('hidden');
@@ -632,7 +584,11 @@
             window.currentGame.init();
         },
         showLobby: () => {
-            if (!db) return alert("未配置 Supabase，无法联机。请检查代码。");
+            if (!isSystemReady || !db) {
+                alert("正在连接服务器，请稍后一秒再试...");
+                if(!isSystemReady) initializeSystem(); 
+                return;
+            }
             document.getElementById('main-menu').classList.add('hidden');
             document.getElementById('online-lobby').classList.remove('hidden');
         },
@@ -646,7 +602,6 @@
             window.currentGame = new OnlineGame(roomId, role);
         }
     };
-
 </script>
 </body>
 </html>
