@@ -1,0 +1,419 @@
+const APP_ROOT_ID = 'app';
+const BOARD_SIZE = 9;
+const MAX_MOVES = 50;
+
+const templates = {
+    mainMenu: `
+        <div id="main-menu" class="screen-overlay">
+            <div class="menu-card">
+                <h1>泡姆三消棋</h1>
+                <button class="menu-btn" onclick="ui.showLocalGame()">单人练习 / 本地对战</button>
+                <button class="menu-btn" onclick="ui.showLobby()">多人在线联机</button>
+            </div>
+        </div>
+    `,
+    lobby: `
+        <div id="online-lobby" class="screen-overlay hidden">
+            <div class="menu-card">
+                <h2>在线大厅</h2>
+                <input type="text" id="room-id" class="room-input" placeholder="输入房间号 (例: 666)" maxlength="10">
+                <button class="menu-btn" onclick="ui.joinOnlineGame(1)">我是玩家 1 (红 - 先手)</button>
+                <button class="menu-btn" onclick="ui.joinOnlineGame(2)">我是玩家 2 (蓝 - 后手)</button>
+                <button class="menu-btn secondary" onclick="ui.showMainMenu()">返回主菜单</button>
+            </div>
+        </div>
+    `,
+    game: `
+        <div id="game-container" class="hidden">
+            <button class="back-btn" onclick="location.reload()">退出</button>
+            <h1>泡姆三消棋</h1>
+            <div class="status-bar">
+                <div class="player-indicator" id="p1-indicator">
+                    <span class="dot p1"></span>
+                    <span class="p1-text">玩家1: <span id="score-p1">0</span></span>
+                </div>
+                <div class="player-indicator" id="p2-indicator">
+                    <span class="dot p2"></span>
+                    <span class="p2-text">玩家2: <span id="score-p2">0</span></span>
+                </div>
+            </div>
+            <div class="board-container">
+                <div class="board" id="game-board"></div>
+            </div>
+            <div class="info-panel">
+                <div id="turn-text">准备就绪</div>
+                <div class="moves-left">剩余步数: <span id="moves-count">50</span></div>
+            </div>
+        </div>
+    `
+};
+
+let isSystemReady = false;
+let db = null;
+
+const rootElement = document.getElementById(APP_ROOT_ID);
+
+(async function bootstrap() {
+    try {
+        injectRemoteMarkup();
+        initializeSystem();
+        attachExportButton();
+    } catch (error) {
+        console.error('UI 加载失败:', error);
+        if (rootElement) {
+            rootElement.innerHTML = '<div class="loading-error">界面加载失败，请刷新重试</div>';
+        }
+    }
+})();
+
+function injectRemoteMarkup() {
+    if (!rootElement) throw new Error('找不到挂载节点');
+    rootElement.innerHTML = `${templates.mainMenu}${templates.lobby}${templates.game}`;
+}
+
+function attachExportButton() {
+    if (document.querySelector('.export-btn')) return;
+    const exportBtn = document.createElement('button');
+    exportBtn.className = 'export-btn';
+    exportBtn.innerHTML = '📷 截图';
+    exportBtn.onclick = exportMatchImage;
+    document.body.appendChild(exportBtn);
+}
+
+async function initializeSystem() {
+    try {
+        const response = await fetch('/api/config');
+        const config = await response.json();
+        if (!config.supabaseUrl || !config.supabaseKey) throw new Error('未获取到环境变量配置');
+        if (window.supabase?.createClient) {
+            db = window.supabase.createClient(config.supabaseUrl, config.supabaseKey);
+            isSystemReady = true;
+        } else {
+            alert('系统错误：Supabase SDK 加载失败');
+        }
+    } catch (error) {
+        console.error('初始化失败:', error);
+        console.log('提示：请使用 vercel dev 启动，或为本地测试手动填入 Key。');
+    }
+}
+
+class BaseGame {
+    constructor() {
+        this.boardElement = document.getElementById('game-board');
+        this.scoreP1El = document.getElementById('score-p1');
+        this.scoreP2El = document.getElementById('score-p2');
+        this.movesEl = document.getElementById('moves-count');
+        this.turnTextEl = document.getElementById('turn-text');
+        this.p1Indicator = document.getElementById('p1-indicator');
+        this.p2Indicator = document.getElementById('p2-indicator');
+        this.resetState();
+    }
+
+    resetState() {
+        this.board = Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(0));
+        this.territory = Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(0));
+        this.currentPlayer = 1;
+        this.totalMoves = 0;
+        this.gameOver = false;
+        this.winner = 0;
+        this.lastMovePos = null;
+    }
+
+    init() {
+        this.renderBoard();
+        this.updateUI();
+    }
+
+    renderBoard() {
+        this.boardElement.innerHTML = '';
+        for (let r = 0; r < BOARD_SIZE; r++) {
+            for (let c = 0; c < BOARD_SIZE; c++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.dataset.row = r;
+                cell.dataset.col = c;
+                cell.onclick = () => this.handleClick(r, c);
+                this.boardElement.appendChild(cell);
+            }
+        }
+        this.updateBoardVisuals();
+    }
+
+    updateBoardVisuals() {
+        const cells = this.boardElement.children;
+        for (let i = 0; i < cells.length; i++) {
+            const r = parseInt(cells[i].dataset.row, 10);
+            const c = parseInt(cells[i].dataset.col, 10);
+            cells[i].className = 'cell';
+            if (this.board[r][c] === 1) cells[i].classList.add('p1', 'has-piece');
+            if (this.board[r][c] === 2) cells[i].classList.add('p2', 'has-piece');
+            if (this.territory[r][c] === 1) cells[i].classList.add('territory-p1');
+            if (this.territory[r][c] === 2) cells[i].classList.add('territory-p2');
+            if (this.lastMovePos && this.lastMovePos.row === r && this.lastMovePos.col === c) {
+                cells[i].classList.add('last-move');
+            }
+        }
+    }
+
+    calculateNextState(row, col, player) {
+        const newBoard = JSON.parse(JSON.stringify(this.board));
+        const newTerritory = JSON.parse(JSON.stringify(this.territory));
+        newBoard[row][col] = player;
+
+        const tempBoard = this.board;
+        const tempTerritory = this.territory;
+        this.board = newBoard;
+        this.territory = newTerritory;
+
+        const eliminations = [];
+        for (let r = 0; r < BOARD_SIZE; r++) {
+            for (let c = 0; c < BOARD_SIZE; c++) {
+                if (c <= BOARD_SIZE - 3 && this.board[r][c] === player && this.board[r][c + 1] === player && this.board[r][c + 2] === player)
+                    eliminations.push({ type: 'h', start: [r, c], end: [r, c + 2] });
+                if (r <= BOARD_SIZE - 3 && this.board[r][c] === player && this.board[r + 1][c] === player && this.board[r + 2][c] === player)
+                    eliminations.push({ type: 'v', start: [r, c], end: [r + 2, c] });
+                if (r <= BOARD_SIZE - 3 && c <= BOARD_SIZE - 3 && this.board[r][c] === player && this.board[r + 1][c + 1] === player && this.board[r + 2][c + 2] === player)
+                    eliminations.push({ type: 'd1', start: [r, c], end: [r + 2, c + 2] });
+                if (r <= BOARD_SIZE - 3 && c >= 2 && this.board[r][c] === player && this.board[r + 1][c - 1] === player && this.board[r + 2][c - 2] === player)
+                    eliminations.push({ type: 'd2', start: [r, c], end: [r + 2, c - 2] });
+            }
+        }
+
+        eliminations.forEach(e => {
+            const [r1, c1] = e.start; const [r2, c2] = e.end;
+            if (e.type === 'h') for (let c = c1; c <= c2; c++) this.board[r1][c] = 0;
+            if (e.type === 'v') for (let r = r1; r <= r2; r++) this.board[r][c1] = 0;
+            if (e.type === 'd1') for (let i = 0; i <= r2 - r1; i++) this.board[r1 + i][c1 + i] = 0;
+            if (e.type === 'd2') for (let i = 0; i <= r2 - r1; i++) this.board[r1 + i][c1 - i] = 0;
+
+            const opp = 3 - player;
+            const setT = (r, c) => this.territory[r][c] = player;
+            const checkBlock = (r, c) => this.board[r][c] === opp;
+
+            if (e.type === 'h') {
+                for (let c = c1; c <= c2; c++) setT(r1, c);
+                for (let c = c1 - 1; c >= 0; c--) { if (checkBlock(r1, c)) break; setT(r1, c); if (c > 0 && checkBlock(r1, c - 1)) break; }
+                for (let c = c2 + 1; c < BOARD_SIZE; c++) { if (checkBlock(r1, c)) break; setT(r1, c); if (c < BOARD_SIZE - 1 && checkBlock(r1, c + 1)) break; }
+            } else if (e.type === 'v') {
+                for (let r = r1; r <= r2; r++) setT(r, c1);
+                for (let r = r1 - 1; r >= 0; r--) { if (checkBlock(r, c1)) break; setT(r, c1); if (r > 0 && checkBlock(r - 1, c1)) break; }
+                for (let r = r2 + 1; r < BOARD_SIZE; r++) { if (checkBlock(r, c1)) break; setT(r, c1); if (r < BOARD_SIZE - 1 && checkBlock(r + 1, c1)) break; }
+            } else if (e.type === 'd1') {
+                for (let i = 0; i <= r2 - r1; i++) setT(r1 + i, c1 + i);
+                let r = r1 - 1, c = c1 - 1;
+                while (r >= 0 && c >= 0) { if (checkBlock(r, c)) break; setT(r, c); if (r > 0 && c > 0 && checkBlock(r - 1, c - 1)) break; r--; c--; }
+                r = r2 + 1; c = c2 + 1;
+                while (r < BOARD_SIZE && c < BOARD_SIZE) { if (checkBlock(r, c)) break; setT(r, c); if (r < BOARD_SIZE - 1 && c < BOARD_SIZE - 1 && checkBlock(r + 1, c + 1)) break; r++; c++; }
+            } else if (e.type === 'd2') {
+                for (let i = 0; i <= r2 - r1; i++) setT(r1 + i, c1 - i);
+                let r = r1 - 1, c = c1 + 1;
+                while (r >= 0 && c < BOARD_SIZE) { if (checkBlock(r, c)) break; setT(r, c); if (r > 0 && c < BOARD_SIZE - 1 && checkBlock(r - 1, c + 1)) break; r--; c++; }
+                r = r2 + 1; c = c2 - 1;
+                while (r < BOARD_SIZE && c >= 0) { if (checkBlock(r, c)) break; setT(r, c); if (r < BOARD_SIZE - 1 && c > 0 && checkBlock(r + 1, c - 1)) break; r++; c--; }
+            }
+        });
+
+        const finalBoard = this.board;
+        const finalTerritory = this.territory;
+        this.board = tempBoard;
+        this.territory = tempTerritory;
+
+        return { board: finalBoard, territory: finalTerritory };
+    }
+
+    checkWinner() {
+        const [s1, s2] = this.getScores();
+        if (s1 > s2) return 1;
+        if (s2 > s1) return 2;
+        return 0;
+    }
+
+    getScores() {
+        let s1 = 0, s2 = 0;
+        for (let r = 0; r < BOARD_SIZE; r++)
+            for (let c = 0; c < BOARD_SIZE; c++)
+                if (this.territory[r][c] === 1) s1++;
+                else if (this.territory[r][c] === 2) s2++;
+        return [s1, s2];
+    }
+
+    updateUI() {
+        const [s1, s2] = this.getScores();
+        this.scoreP1El.textContent = s1;
+        this.scoreP2El.textContent = s2;
+        this.movesEl.textContent = MAX_MOVES - this.totalMoves;
+
+        let statusMsg = '';
+        if (this.gameOver) {
+            statusMsg = this.winner === 0 ? '游戏结束: 平局' : `游戏结束: 玩家${this.winner} 获胜!`;
+        } else {
+            statusMsg = `当前回合: 玩家${this.currentPlayer} (${this.currentPlayer === 1 ? '红' : '蓝'})`;
+        }
+        this.turnTextEl.textContent = statusMsg;
+        this.turnTextEl.style.color = this.currentPlayer === 1 ? 'var(--p1-color)' : 'var(--p2-color)';
+
+        this.p1Indicator.classList.toggle('active', this.currentPlayer === 1);
+        this.p2Indicator.classList.toggle('active', this.currentPlayer === 2);
+    }
+}
+
+class LocalGame extends BaseGame {
+    handleClick(row, col) {
+        if (this.gameOver) return;
+        if (this.board[row][col] !== 0) return;
+        if (this.territory[row][col] === 3 - this.currentPlayer) return;
+        const nextState = this.calculateNextState(row, col, this.currentPlayer);
+        this.board = nextState.board;
+        this.territory = nextState.territory;
+        this.lastMovePos = { row, col };
+        this.totalMoves++;
+        if (this.totalMoves >= MAX_MOVES) {
+            this.gameOver = true;
+            this.winner = this.checkWinner();
+        } else {
+            this.currentPlayer = 3 - this.currentPlayer;
+        }
+        this.updateBoardVisuals();
+        this.updateUI();
+    }
+}
+
+class OnlineGame extends BaseGame {
+    constructor(roomId, role) {
+        super();
+        this.roomId = roomId;
+        this.myRole = role;
+        this.initOnline();
+    }
+
+    async initOnline() {
+        this.turnTextEl.textContent = '正在连接服务器...';
+        const { data } = await db.from('games').select('*').eq('room_id', this.roomId).single();
+        if (!data && this.myRole === 1) {
+            const initialState = {
+                room_id: this.roomId,
+                board: this.board,
+                territory: this.territory,
+                current_player: 1,
+                winner: null,
+                last_move_pos: null
+            };
+            await db.from('games').insert(initialState);
+        } else if (!data && this.myRole === 2) {
+            alert('房间不存在，请让玩家1先创建！');
+            location.reload();
+            return;
+        } else if (data) {
+            this.syncState(data);
+        }
+
+        this.init();
+        this.listenForUpdates();
+    }
+
+    listenForUpdates() {
+        db.channel('game_room')
+            .on('postgres_changes', {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'games',
+                filter: `room_id=eq.${this.roomId}`
+            }, payload => {
+                this.syncState(payload.new);
+            })
+            .subscribe();
+    }
+
+    syncState(data) {
+        this.board = data.board;
+        this.territory = data.territory;
+        this.currentPlayer = data.current_player;
+        this.lastMovePos = data.last_move_pos;
+        this.winner = data.winner;
+        if (this.winner !== null) {
+            this.gameOver = true;
+        }
+        this.updateBoardVisuals();
+        this.updateUI();
+    }
+
+    async handleClick(row, col) {
+        if (this.gameOver) return;
+        if (this.currentPlayer !== this.myRole) {
+            alert('还没轮到你！');
+            return;
+        }
+        if (this.board[row][col] !== 0) return;
+        if (this.territory[row][col] === 3 - this.currentPlayer) return;
+
+        const nextState = this.calculateNextState(row, col, this.currentPlayer);
+        const nextPlayer = 3 - this.currentPlayer;
+
+        const updateData = {
+            board: nextState.board,
+            territory: nextState.territory,
+            current_player: nextPlayer,
+            last_move_pos: { row, col },
+            updated_at: new Date()
+        };
+
+        await db.from('games').update(updateData).eq('room_id', this.roomId);
+    }
+}
+
+const ui = {
+    showMainMenu: () => {
+        document.getElementById('main-menu')?.classList.remove('hidden');
+        document.getElementById('online-lobby')?.classList.add('hidden');
+        document.getElementById('game-container')?.classList.add('hidden');
+    },
+    showLocalGame: () => {
+        document.getElementById('main-menu')?.classList.add('hidden');
+        document.getElementById('game-container')?.classList.remove('hidden');
+        window.currentGame = new LocalGame();
+        window.currentGame.init();
+    },
+    showLobby: () => {
+        if (!isSystemReady || !db) {
+            alert('正在连接服务器，请稍后再试...');
+            if (!isSystemReady) initializeSystem();
+            return;
+        }
+        document.getElementById('main-menu')?.classList.add('hidden');
+        document.getElementById('online-lobby')?.classList.remove('hidden');
+    },
+    joinOnlineGame: role => {
+        const roomId = document.getElementById('room-id')?.value.trim();
+        if (!roomId) return alert('请输入房间号！');
+        document.getElementById('online-lobby')?.classList.add('hidden');
+        document.getElementById('game-container')?.classList.remove('hidden');
+        window.currentGame = new OnlineGame(roomId, role);
+    }
+};
+
+window.ui = ui;
+
+function exportMatchImage() {
+    const btn = document.querySelector('.export-btn');
+    if (!btn) return;
+    btn.style.display = 'none';
+    document.body.style.cursor = 'wait';
+    html2canvas(document.body, {
+        backgroundColor: '#1c232b',
+        scale: 2
+    }).then(canvas => {
+        const link = document.createElement('a');
+        const date = new Date();
+        const timeStr = `${date.getFullYear()}${date.getMonth() + 1}${date.getDate()}_${date.getHours()}${date.getMinutes()}`;
+        link.download = `泡姆三消棋_战绩_${timeStr}.png`;
+        link.href = canvas.toDataURL();
+        link.click();
+        btn.style.display = 'flex';
+        document.body.style.cursor = 'default';
+    }).catch(err => {
+        console.error('截图失败:', err);
+        alert('截图失败，请重试');
+        btn.style.display = 'flex';
+        document.body.style.cursor = 'default';
+    });
+}
