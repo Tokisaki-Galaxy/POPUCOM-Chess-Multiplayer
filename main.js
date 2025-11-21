@@ -1,12 +1,13 @@
 const APP_ROOT_ID = 'app';
 const BOARD_SIZE = 9;
 const MAX_MOVES = 50;
+const GAME_API_BASE = '/api/game';
+const POLL_INTERVAL_MS = 2000;
 
 const templates = {
     mainMenu: `
         <div id="main-menu" class="screen-overlay">
             <div class="menu-card">
-                <h1>泡姆三消棋</h1>
                 <button class="menu-btn" onclick="ui.showLocalGame()">单人练习 / 本地对战</button>
                 <button class="menu-btn" onclick="ui.showLobby()">多人在线联机</button>
             </div>
@@ -48,15 +49,11 @@ const templates = {
     `
 };
 
-let isSystemReady = false;
-let db = null;
-
 const rootElement = document.getElementById(APP_ROOT_ID);
 
 (async function bootstrap() {
     try {
         injectRemoteMarkup();
-        initializeSystem();
         attachExportButton();
     } catch (error) {
         console.error('UI 加载失败:', error);
@@ -80,21 +77,42 @@ function attachExportButton() {
     document.body.appendChild(exportBtn);
 }
 
-async function initializeSystem() {
-    try {
-        const response = await fetch('/api/config');
-        const config = await response.json();
-        if (!config.supabaseUrl || !config.supabaseKey) throw new Error('未获取到环境变量配置');
-        if (window.supabase?.createClient) {
-            db = window.supabase.createClient(config.supabaseUrl, config.supabaseKey);
-            isSystemReady = true;
-        } else {
-            alert('系统错误：Supabase SDK 加载失败');
-        }
-    } catch (error) {
-        console.error('初始化失败:', error);
-        console.log('提示：请使用 vercel dev 启动，或为本地测试手动填入 Key。');
+async function requestJson(url, options = {}, { allow404 = false } = {}) {
+    const response = await fetch(url, options);
+    if (allow404 && response.status === 404) {
+        return null;
     }
+    const hasBody = response.status !== 204;
+    const payload = hasBody ? await response.json().catch(() => null) : null;
+    if (!response.ok) {
+        const message = payload?.error || payload?.message || '请求失败';
+        throw new Error(message);
+    }
+    return payload;
+}
+
+function buildRequestOptions(method, body) {
+    return {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    };
+}
+
+async function fetchGameState(roomId) {
+    if (!roomId) throw new Error('缺少房间号');
+    const url = `${GAME_API_BASE}?roomId=${encodeURIComponent(roomId)}`;
+    return requestJson(url, {}, { allow404: true });
+}
+
+async function ensureRoom(roomId) {
+    if (!roomId) throw new Error('缺少房间号');
+    return requestJson(GAME_API_BASE, buildRequestOptions('POST', { roomId }));
+}
+
+async function updateGameState(roomId, state) {
+    if (!roomId) throw new Error('缺少房间号');
+    return requestJson(GAME_API_BASE, buildRequestOptions('PUT', { roomId, state }));
 }
 
 class BaseGame {
@@ -283,58 +301,74 @@ class OnlineGame extends BaseGame {
         super();
         this.roomId = roomId;
         this.myRole = role;
+        this.pollTimer = null;
         this.initOnline();
     }
 
     async initOnline() {
         this.turnTextEl.textContent = '正在连接服务器...';
-        const { data } = await db.from('games').select('*').eq('room_id', this.roomId).single();
-        if (!data && this.myRole === 1) {
-            const initialState = {
-                room_id: this.roomId,
-                board: this.board,
-                territory: this.territory,
-                current_player: 1,
-                winner: null,
-                last_move_pos: null
-            };
-            await db.from('games').insert(initialState);
-        } else if (!data && this.myRole === 2) {
-            alert('房间不存在，请让玩家1先创建！');
+        try {
+            let state;
+            if (this.myRole === 1) {
+                state = await ensureRoom(this.roomId);
+            } else {
+                state = await fetchGameState(this.roomId);
+                if (!state) throw new Error('房间不存在，请让玩家1先创建');
+            }
+            if (state) {
+                this.syncState(state);
+            }
+            this.init();
+            this.startPolling();
+        } catch (error) {
+            console.error('在线模式初始化失败:', error);
+            alert(error.message || '在线模式初始化失败');
             location.reload();
-            return;
-        } else if (data) {
-            this.syncState(data);
         }
-
-        this.init();
-        this.listenForUpdates();
     }
 
-    listenForUpdates() {
-        db.channel('game_room')
-            .on('postgres_changes', {
-                event: 'UPDATE',
-                schema: 'public',
-                table: 'games',
-                filter: `room_id=eq.${this.roomId}`
-            }, payload => {
-                this.syncState(payload.new);
-            })
-            .subscribe();
+    startPolling() {
+        this.stopPolling();
+        this.pollTimer = setInterval(async () => {
+            try {
+                const latest = await fetchGameState(this.roomId);
+                if (latest) {
+                    this.syncState(latest);
+                }
+            } catch (error) {
+                console.error('轮询失败:', error);
+            }
+        }, POLL_INTERVAL_MS);
+    }
+
+    stopPolling() {
+        if (this.pollTimer) {
+            clearInterval(this.pollTimer);
+            this.pollTimer = null;
+        }
     }
 
     syncState(data) {
+        if (!data) return;
         this.board = data.board;
         this.territory = data.territory;
         this.currentPlayer = data.current_player;
         this.lastMovePos = data.last_move_pos;
-        this.winner = data.winner;
-        if (this.winner !== null) {
+        if (typeof data?.last_move_pos?.move_number === 'number') {
+            this.totalMoves = data.last_move_pos.move_number;
+        }
+        if (data.winner === null || data.winner === undefined) {
+            this.gameOver = false;
+            this.winner = 0;
+        } else {
             this.gameOver = true;
+            this.winner = data.winner;
         }
         this.updateBoardVisuals();
         this.updateUI();
+        if (this.gameOver) {
+            this.stopPolling();
+        }
     }
 
     async handleClick(row, col) {
@@ -349,42 +383,70 @@ class OnlineGame extends BaseGame {
         const nextState = this.calculateNextState(row, col, this.currentPlayer);
         const nextPlayer = 3 - this.currentPlayer;
 
-        const updateData = {
-            board: nextState.board,
-            territory: nextState.territory,
-            current_player: nextPlayer,
-            last_move_pos: { row, col },
-            updated_at: new Date()
+        this.board = nextState.board;
+        this.territory = nextState.territory;
+        this.lastMovePos = { row, col };
+        this.totalMoves++;
+
+        if (this.totalMoves >= MAX_MOVES) {
+            this.gameOver = true;
+            this.winner = this.checkWinner();
+        } else {
+            this.currentPlayer = nextPlayer;
+        }
+
+        this.updateBoardVisuals();
+        this.updateUI();
+
+        const serverPayload = {
+            board: this.board,
+            territory: this.territory,
+            currentPlayer: this.currentPlayer,
+            winner: this.gameOver ? this.winner : null,
+            lastMovePos: { ...this.lastMovePos, move_number: this.totalMoves }
         };
 
-        await db.from('games').update(updateData).eq('room_id', this.roomId);
+        try {
+            await updateGameState(this.roomId, serverPayload);
+            if (this.gameOver) {
+                this.stopPolling();
+            }
+        } catch (error) {
+            console.error('同步服务器失败:', error);
+            alert('同步服务器失败，请稍后再试');
+        }
     }
+}
+
+function resetCurrentGame() {
+    if (window.currentGame?.stopPolling) {
+        window.currentGame.stopPolling();
+    }
+    window.currentGame = null;
 }
 
 const ui = {
     showMainMenu: () => {
+        resetCurrentGame();
         document.getElementById('main-menu')?.classList.remove('hidden');
         document.getElementById('online-lobby')?.classList.add('hidden');
         document.getElementById('game-container')?.classList.add('hidden');
     },
     showLocalGame: () => {
+        resetCurrentGame();
         document.getElementById('main-menu')?.classList.add('hidden');
         document.getElementById('game-container')?.classList.remove('hidden');
         window.currentGame = new LocalGame();
         window.currentGame.init();
     },
     showLobby: () => {
-        if (!isSystemReady || !db) {
-            alert('正在连接服务器，请稍后再试...');
-            if (!isSystemReady) initializeSystem();
-            return;
-        }
         document.getElementById('main-menu')?.classList.add('hidden');
         document.getElementById('online-lobby')?.classList.remove('hidden');
     },
     joinOnlineGame: role => {
         const roomId = document.getElementById('room-id')?.value.trim();
         if (!roomId) return alert('请输入房间号！');
+        resetCurrentGame();
         document.getElementById('online-lobby')?.classList.add('hidden');
         document.getElementById('game-container')?.classList.remove('hidden');
         window.currentGame = new OnlineGame(roomId, role);
@@ -392,6 +454,7 @@ const ui = {
 };
 
 window.ui = ui;
+window.currentGame = null;
 
 function exportMatchImage() {
     const btn = document.querySelector('.export-btn');
