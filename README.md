@@ -8,21 +8,25 @@
 
 ## 功能亮点
 - ✅ 9×9 棋盘、原汁原味规则与三消占领机制
-- ✅ 本地双人热座 + 在线房间对战（四位房号）
+- ✅ 本地双人热座 + 在线房间对战
 - ✅ 多房间并发、玩家昵称与令牌校验
-- ✅ 直观的 Pygame 棋盘、落子高亮与比分面板
+- ✅ 直观的棋盘、落子高亮与比分面板
 
 ## 快速开始
 
 ### Serverless 云端体验（推荐）
-1. 打开 <https://pop.tokisaki.top/> 即可直接游玩，无需安装任何依赖。
-2. 若希望自定义域名或私有部署，可使用 [Vercel](https://vercel.com/) 一键导入本仓库并部署。
-3. 设置 supabase ,保存env。
-4. 访问生成的域名游玩。
+打开 <https://pop.tokisaki.top/> 即可直接游玩。
+若希望自定义域名或私有部署，可使用 [Vercel](https://vercel.com/) 一键导入本仓库并部署。
+1. Fork 本仓库至个人账号。
+2. 登录 [Vercel](https://vercel.com/)，选择“Import Project”，导入刚 Fork 的仓库。
+3. 设置 supabase ,保存`SUPABASE_URL`，`SUPABASE_KEY`的vercel env。`SUPABASE_KEY`是Legacy API Key，可以在Supabase项目设置的API页面找到。开头是eyxxxxx
+4. 在supabase中运行`database-inits.sql`脚本，初始化所需表结构。运行`cron-cleandata.sql`脚本以定期清理过期房间。
+5. 访问生成的域名游玩。
+6. （可选）设置upstash完成IP访问限速。
 
 > Serverless 版本包含 UI、房间与规则逻辑，默认配置更易于分享；若仅想体验对战，这是首选方式。
 
-### Python 自托管（Legacy，暂不推荐）
+### Python （Legacy，暂不推荐）
 1. 安装依赖：
   ```sh
   pip install -r requirements.txt  # 或手动安装 flask pygame numpy requests waitress
@@ -42,7 +46,7 @@
   - 选择“本地双人”即可原地对战。
   - 选择“在线”，输入服务器 IP、玩家昵称与四位房号即可与远端玩家同步对局。
 
-## REST 接口速览
+#### Python REST 接口速览
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
@@ -57,10 +61,16 @@
 
 ```
 POPUCOM-Chess/
-├─ client.py   ← Pygame UI、本地 & 远程模式
-├─ server.py   ← Flask REST 服务、对局调度
-├─ HTML/三消棋.html ← 纯前端示例
-└─ README.md
+├─ python/requirements.txt  ← 依赖列表
+├─ python/server.py         ← Python 版本 Flask REST 服务、对局调度
+├─ python/client.py         ← Python 版本 Pygame UI、本地 & 远程模式
+├─ index.html               ← Serverless 版本前端页面
+├─ api/game.js              ← Serverless 版本 API 逻辑
+├─ main.js                  ← Serverless 版本前端逻辑
+├─ style.css                ← Serverless 版本样式表
+├─ database-inits.sql       ← Serverless 版本Supabase 初始化脚本，创建所需表结构
+├─ cron-cleandata.sql       ← Serverless 版本定期清理过期房间的 Supabase SQL 脚本
+└─ package.json             ← Serverless 版本依赖列表
 ```
 
 ## 常见问题

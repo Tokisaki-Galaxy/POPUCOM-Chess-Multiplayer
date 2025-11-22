@@ -8,8 +8,8 @@ const redis = Redis.fromEnv();
 // 2. 初始化限流器
 const ratelimit = new Ratelimit({
   redis: redis,
-  // 限制规则：1分钟内最多 50 次
-  limiter: Ratelimit.slidingWindow(50, '1 m'),
+  // 限制规则：1分钟内最多几次
+  limiter: Ratelimit.slidingWindow(200, '1 m'),
 });
 
 export const config = {
