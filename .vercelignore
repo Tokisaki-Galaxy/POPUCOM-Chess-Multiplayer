@@ -1,0 +1,6 @@
+*.sql
+python/
+*.py
+.env
+.env.*
+*.md
