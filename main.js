@@ -8,6 +8,7 @@ const templates = {
     mainMenu: `
         <div id="main-menu" class="screen-overlay">
             <div class="menu-card">
+                <h2>泡姆三消棋</h2>
                 <button class="menu-btn" onclick="ui.showLocalGame()">单人练习 / 本地对战</button>
                 <button class="menu-btn" onclick="ui.showLobby()">多人在线联机</button>
                 <div class="rules">
