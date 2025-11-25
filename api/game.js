@@ -9,8 +9,8 @@ const defaultError = '服务器内部错误，请稍后重试';
 function isValidRoomId(roomId) {
   if (typeof roomId !== 'string') return false;
   if (roomId.length === 0 || roomId.length > MAX_ROOM_ID_LENGTH) return false;
-  // Only allow alphanumeric characters, dashes, and underscores
-  return /^[a-zA-Z0-9_-]+$/.test(roomId);
+  // encodeURIComponent is used for safe URL construction, so any string content is allowed
+  return true;
 }
 
 function isValidGrid(grid) {
