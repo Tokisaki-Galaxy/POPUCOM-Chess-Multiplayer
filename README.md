@@ -19,10 +19,20 @@
 若希望自定义域名或私有部署，可使用 [Vercel](https://vercel.com/) 一键导入本仓库并部署。
 1. Fork 本仓库至个人账号。
 2. 登录 [Vercel](https://vercel.com/)，选择“Import Project”，导入刚 Fork 的仓库。
-3. 设置 supabase ,保存`SUPABASE_URL`，`SUPABASE_KEY`的vercel env。`SUPABASE_KEY`是Legacy API Key，可以在Supabase项目设置的API页面找到。开头是eyxxxxx
-4. 在supabase中运行`database-inits.sql`脚本，初始化所需表结构。运行`cron-cleandata.sql`脚本以定期清理过期房间。
+3. 设置 Supabase 环境变量：
+   - `SUPABASE_URL`：Supabase 项目 URL
+   - `SUPABASE_SERVICE_ROLE_KEY`：service_role key，可在 Supabase 项目设置 > API 页面找到，具有绕过 RLS 的权限
+4. 在 Supabase 中运行 `database-init.sql` 脚本，初始化所需表结构并启用 RLS。运行 `cron-cleandata.sql` 脚本以定期清理过期房间。
 5. 访问生成的域名游玩。
-6. （可选）设置upstash完成IP访问限速。
+6. （可选）设置 Upstash 完成 IP 访问限速。
+
+#### 关于 Row Level Security (RLS)
+
+本项目已在 `database-init.sql` 中启用 RLS。由于采用 serverless 架构，所有数据库操作都通过服务端 API (`api/game.js`) 进行，无需单独的客户端鉴权：
+- **必须使用 `SUPABASE_SERVICE_ROLE_KEY`**：该密钥自动绕过 RLS，API 可正常读写数据
+- **不支持使用 `SUPABASE_KEY` (anon key)**：启用 RLS 后，anon key 默认无法访问数据
+
+启用 RLS 的好处是提供额外的安全防护——即使 anon key 意外泄露，攻击者也无法直接操作数据库。
 
 > Serverless 版本包含 UI、房间与规则逻辑，默认配置更易于分享；若仅想体验对战，这是首选方式。
 
