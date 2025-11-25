@@ -60,7 +60,7 @@ function validateLastMovePos(lastMovePos) {
   if (lastMovePos === null || lastMovePos === undefined) {
     return { valid: true };
   }
-  if (typeof lastMovePos !== 'object') {
+  if (typeof lastMovePos !== 'object' || Array.isArray(lastMovePos)) {
     return { valid: false, error: 'lastMovePos 必须是对象或 null' };
   }
   const { row, col, move_number } = lastMovePos;
@@ -79,7 +79,7 @@ function validateLastMovePos(lastMovePos) {
 }
 
 function validateState(state) {
-  if (!state || typeof state !== 'object') {
+  if (!state || typeof state !== 'object' || Array.isArray(state)) {
     return { valid: false, error: 'state 必须是对象' };
   }
 
