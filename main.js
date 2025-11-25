@@ -59,6 +59,7 @@ const templates = {
             <div class="info-panel">
                 <div id="turn-text">准备就绪</div>
                 <div class="moves-left">剩余步数: <span id="moves-count">50</span></div>
+                <button class="reset-room-btn hidden" id="reset-room-btn" onclick="ui.resetCurrentRoom()">🔄 重置房间 (再来一局)</button>
             </div>
         </div>
     `
@@ -141,6 +142,11 @@ async function updateGameState(roomId, state) {
     return requestJson(GAME_API_BASE, buildRequestOptions('PUT', { roomId, state }));
 }
 
+async function resetRoomState(roomId) {
+    if (!roomId) throw new Error('缺少房间号');
+    return requestJson(GAME_API_BASE, buildRequestOptions('DELETE', { roomId }));
+}
+
 class BaseGame {
     constructor() {
         this.boardElement = document.getElementById('game-board');
@@ -150,6 +156,7 @@ class BaseGame {
         this.turnTextEl = document.getElementById('turn-text');
         this.p1Indicator = document.getElementById('p1-indicator');
         this.p2Indicator = document.getElementById('p2-indicator');
+        this.resetRoomBtn = document.getElementById('reset-room-btn');
         this.resetState();
     }
 
@@ -396,14 +403,31 @@ class OnlineGame extends BaseGame {
         if (data.winner === null || data.winner === undefined) {
             this.gameOver = false;
             this.winner = 0;
+            this.resetRoomBtn?.classList.add('hidden');
         } else {
             this.gameOver = true;
             this.winner = data.winner;
+            this.resetRoomBtn?.classList.remove('hidden');
         }
         this.updateBoardVisuals();
         this.updateUI();
         if (this.gameOver) {
             this.stopPolling();
+        }
+    }
+
+    async resetRoom() {
+        try {
+            this.turnTextEl.textContent = '正在重置房间...';
+            const state = await resetRoomState(this.roomId);
+            if (state) {
+                this.syncState(state);
+                this.renderBoard();
+                this.startPolling();
+            }
+        } catch (error) {
+            console.error('重置房间失败:', error);
+            alert(error.message || '重置房间失败，请稍后重试');
         }
     }
 
@@ -486,6 +510,11 @@ const ui = {
         document.getElementById('online-lobby')?.classList.add('hidden');
         document.getElementById('game-container')?.classList.remove('hidden');
         window.currentGame = new OnlineGame(roomId, role);
+    },
+    resetCurrentRoom: async () => {
+        if (window.currentGame?.resetRoom) {
+            await window.currentGame.resetRoom();
+        }
     }
 };
 
