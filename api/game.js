@@ -13,20 +13,9 @@ function isValidRoomId(roomId) {
   return /^[a-zA-Z0-9_-]+$/.test(roomId);
 }
 
-function isValidBoard(board) {
-  if (!Array.isArray(board) || board.length !== BOARD_SIZE) return false;
-  for (const row of board) {
-    if (!Array.isArray(row) || row.length !== BOARD_SIZE) return false;
-    for (const cell of row) {
-      if (!Number.isInteger(cell) || cell < 0 || cell > 2) return false;
-    }
-  }
-  return true;
-}
-
-function isValidTerritory(territory) {
-  if (!Array.isArray(territory) || territory.length !== BOARD_SIZE) return false;
-  for (const row of territory) {
+function isValidGrid(grid) {
+  if (!Array.isArray(grid) || grid.length !== BOARD_SIZE) return false;
+  for (const row of grid) {
     if (!Array.isArray(row) || row.length !== BOARD_SIZE) return false;
     for (const cell of row) {
       if (!Number.isInteger(cell) || cell < 0 || cell > 2) return false;
@@ -60,10 +49,10 @@ function validateState(state) {
   if (!state || typeof state !== 'object') {
     return { valid: false, error: 'state 必须是对象' };
   }
-  if (!isValidBoard(state.board)) {
+  if (!isValidGrid(state.board)) {
     return { valid: false, error: 'board 格式无效' };
   }
-  if (!isValidTerritory(state.territory)) {
+  if (!isValidGrid(state.territory)) {
     return { valid: false, error: 'territory 格式无效' };
   }
   if (!isValidCurrentPlayer(state.currentPlayer)) {
