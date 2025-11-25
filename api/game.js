@@ -47,7 +47,13 @@ export default async function handler(request, response) {
       return;
     }
 
-    response.setHeader('Allow', 'GET,POST,PUT');
+    if (request.method === 'DELETE') {
+      const reset = await resetRoom(roomId);
+      response.status(200).json(reset);
+      return;
+    }
+
+    response.setHeader('Allow', 'GET,POST,PUT,DELETE');
     response.status(405).json({ error: '不支持的请求方法' });
   } catch (error) {
     console.error('Game API error:', error);
@@ -119,6 +125,34 @@ async function updateRoom(roomId, state) {
 
   if (!result.ok) {
     throw new Error('更新房间失败');
+  }
+
+  const data = await result.json();
+  if (Array.isArray(data) && data.length > 0) {
+    return data[0];
+  }
+  return data;
+}
+
+async function resetRoom(roomId) {
+  const existing = await getRoom(roomId);
+  if (!existing) {
+    throw new Error('房间不存在');
+  }
+  
+  const payload = {
+    ...buildInitialState(),
+    updated_at: new Date().toISOString()
+  };
+
+  const result = await fetch(`${tableEndpoint}?room_id=eq.${encodeURIComponent(roomId)}`, {
+    method: 'PATCH',
+    headers: buildHeaders({ Prefer: 'return=representation' }),
+    body: JSON.stringify(payload)
+  });
+
+  if (!result.ok) {
+    throw new Error('重置房间失败');
   }
 
   const data = await result.json();

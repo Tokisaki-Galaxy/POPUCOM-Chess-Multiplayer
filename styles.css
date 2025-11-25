@@ -368,3 +368,27 @@ input.room-input {
 .export-btn:active {
     transform: scale(0.95);
 }
+
+.reset-room-btn {
+    display: block;
+    margin: 20px auto 0;
+    padding: 15px 30px;
+    border: none;
+    border-radius: 8px;
+    background: #e67e22;
+    color: white;
+    font-size: 1.1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.1s, background 0.2s;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.reset-room-btn:hover {
+    background: #f39c12;
+    transform: scale(1.02);
+}
+
+.reset-room-btn:active {
+    transform: scale(0.98);
+}
