@@ -1,9 +1,71 @@
 const BOARD_SIZE = 9;
+const MAX_ROOM_ID_LENGTH = 20;
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
 const tableEndpoint = supabaseUrl ? `${supabaseUrl}/rest/v1/games` : '';
 
 const defaultError = '服务器内部错误，请稍后重试';
+
+function isValidRoomId(roomId) {
+  if (typeof roomId !== 'string') return false;
+  if (roomId.length === 0 || roomId.length > MAX_ROOM_ID_LENGTH) return false;
+  // encodeURIComponent is used for safe URL construction, so any string content is allowed
+  return true;
+}
+
+function isValidGrid(grid) {
+  if (!Array.isArray(grid) || grid.length !== BOARD_SIZE) return false;
+  for (const row of grid) {
+    if (!Array.isArray(row) || row.length !== BOARD_SIZE) return false;
+    for (const cell of row) {
+      if (!Number.isInteger(cell) || cell < 0 || cell > 2) return false;
+    }
+  }
+  return true;
+}
+
+function isValidCurrentPlayer(player) {
+  return player === 1 || player === 2;
+}
+
+function isValidWinner(winner) {
+  return winner === null || winner === 0 || winner === 1 || winner === 2;
+}
+
+function isValidLastMovePos(pos) {
+  if (pos === null || pos === undefined) return true;
+  if (typeof pos !== 'object') return false;
+  if (typeof pos.row !== 'number' || typeof pos.col !== 'number') return false;
+  if (!Number.isInteger(pos.row) || !Number.isInteger(pos.col)) return false;
+  if (pos.row < 0 || pos.row >= BOARD_SIZE || pos.col < 0 || pos.col >= BOARD_SIZE) return false;
+  // move_number is optional but must be a non-negative integer if present
+  if (pos.move_number !== undefined) {
+    if (!Number.isInteger(pos.move_number) || pos.move_number < 0) return false;
+  }
+  return true;
+}
+
+function validateState(state) {
+  if (!state || typeof state !== 'object') {
+    return { valid: false, error: 'state 必须是对象' };
+  }
+  if (!isValidGrid(state.board)) {
+    return { valid: false, error: 'board 格式无效' };
+  }
+  if (!isValidGrid(state.territory)) {
+    return { valid: false, error: 'territory 格式无效' };
+  }
+  if (!isValidCurrentPlayer(state.currentPlayer)) {
+    return { valid: false, error: 'currentPlayer 必须是 1 或 2' };
+  }
+  if (!isValidWinner(state.winner)) {
+    return { valid: false, error: 'winner 格式无效' };
+  }
+  if (!isValidLastMovePos(state.lastMovePos)) {
+    return { valid: false, error: 'lastMovePos 格式无效' };
+  }
+  return { valid: true };
+}
 
 export default async function handler(request, response) {
   response.setHeader('Cache-Control', 'no-store');
@@ -16,6 +78,11 @@ export default async function handler(request, response) {
   const roomId = request.method === 'GET' ? request.query?.roomId : request.body?.roomId;
   if (!roomId) {
     response.status(400).json({ error: '缺少 roomId' });
+    return;
+  }
+
+  if (!isValidRoomId(roomId)) {
+    response.status(400).json({ error: 'roomId 格式无效' });
     return;
   }
 
@@ -40,6 +107,11 @@ export default async function handler(request, response) {
       const state = request.body?.state;
       if (!state) {
         response.status(400).json({ error: '缺少 state 数据' });
+        return;
+      }
+      const validation = validateState(state);
+      if (!validation.valid) {
+        response.status(400).json({ error: validation.error });
         return;
       }
       const updated = await updateRoom(roomId, state);
