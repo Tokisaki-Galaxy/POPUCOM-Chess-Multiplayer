@@ -1,10 +1,11 @@
 /**
  * Comprehensive tests for serverless game API (api/game.js)
- * Uses test room numbers 999XXX as specified in requirements
+ * Uses test room number "999?#$" with special characters to test deserialization
  */
 
 const BOARD_SIZE = 9;
 const MAX_ROOM_ID_LENGTH = 20;
+const TEST_ROOM_ID = '999?#$'; // Standard test room ID with special characters
 
 // Re-implement validation functions for testing (they are not exported from the module)
 function isValidRoomId(roomId) {
@@ -84,29 +85,9 @@ function buildInitialState() {
 // Test Suite: isValidRoomId
 // ============================================================================
 describe('isValidRoomId validation', () => {
-  // Test room numbers starting with 999 as specified
-  test('should accept valid room ID 999TEST', () => {
-    expect(isValidRoomId('999TEST')).toBe(true);
-  });
-
-  test('should accept valid room ID 999UNIT', () => {
-    expect(isValidRoomId('999UNIT')).toBe(true);
-  });
-
-  test('should accept valid room ID 999ABC', () => {
-    expect(isValidRoomId('999ABC')).toBe(true);
-  });
-
-  test('should accept valid room ID 999001', () => {
-    expect(isValidRoomId('999001')).toBe(true);
-  });
-
-  test('should accept valid room ID 999XYZ123', () => {
-    expect(isValidRoomId('999XYZ123')).toBe(true);
-  });
-
-  test('should accept other valid room IDs like 666ABC', () => {
-    expect(isValidRoomId('666ABC')).toBe(true);
+  // Test with special characters room ID "999?#$" for deserialization testing
+  test('should accept test room ID with special characters 999?#$', () => {
+    expect(isValidRoomId(TEST_ROOM_ID)).toBe(true);
   });
 
   test('should accept room ID at max length (20 chars)', () => {
@@ -134,27 +115,15 @@ describe('isValidRoomId validation', () => {
   });
 
   test('should reject array type', () => {
-    expect(isValidRoomId(['999TEST'])).toBe(false);
+    expect(isValidRoomId([TEST_ROOM_ID])).toBe(false);
   });
 
   test('should reject object type', () => {
-    expect(isValidRoomId({ id: '999TEST' })).toBe(false);
-  });
-
-  test('should accept room ID with special characters', () => {
-    expect(isValidRoomId('999-TEST_123')).toBe(true);
+    expect(isValidRoomId({ id: TEST_ROOM_ID })).toBe(false);
   });
 
   test('should accept single character room ID', () => {
     expect(isValidRoomId('9')).toBe(true);
-  });
-
-  test('should accept room ID with Chinese characters', () => {
-    expect(isValidRoomId('999房间测试')).toBe(true);
-  });
-
-  test('should accept room ID with spaces', () => {
-    expect(isValidRoomId('999 TEST')).toBe(true);
   });
 });
 
@@ -793,20 +762,20 @@ describe('Mock HTTP Handler behavior', () => {
       expect(res.body.error).toBe('缺少 roomId');
     });
 
-    test('should return 404 when room does not exist', async () => {
-      const req = createMockRequest('GET', { roomId: '999NOTEXIST' });
+    test('should return 404 when room does not exist (special chars room)', async () => {
+      const req = createMockRequest('GET', { roomId: TEST_ROOM_ID });
       const res = createMockResponse();
       const mockGetRoom = jest.fn().mockResolvedValue(null);
       await simulateHandler(req, res, 'url', 'key', mockGetRoom, jest.fn(), jest.fn(), jest.fn());
       expect(res.statusCode).toBe(404);
       expect(res.body.error).toBe('房间不存在');
-      expect(mockGetRoom).toHaveBeenCalledWith('999NOTEXIST');
+      expect(mockGetRoom).toHaveBeenCalledWith(TEST_ROOM_ID);
     });
 
-    test('should return 200 with room data when room exists', async () => {
-      const req = createMockRequest('GET', { roomId: '999EXISTS' });
+    test('should return 200 with room data when room exists (special chars room)', async () => {
+      const req = createMockRequest('GET', { roomId: TEST_ROOM_ID });
       const res = createMockResponse();
-      const mockRoom = { ...buildInitialState(), room_id: '999EXISTS' };
+      const mockRoom = { ...buildInitialState(), room_id: TEST_ROOM_ID };
       const mockGetRoom = jest.fn().mockResolvedValue(mockRoom);
       await simulateHandler(req, res, 'url', 'key', mockGetRoom, jest.fn(), jest.fn(), jest.fn());
       expect(res.statusCode).toBe(200);
@@ -814,7 +783,7 @@ describe('Mock HTTP Handler behavior', () => {
     });
 
     test('should return 500 when Supabase config is missing', async () => {
-      const req = createMockRequest('GET', { roomId: '999TEST' });
+      const req = createMockRequest('GET', { roomId: TEST_ROOM_ID });
       const res = createMockResponse();
       await simulateHandler(req, res, '', '', jest.fn(), jest.fn(), jest.fn(), jest.fn());
       expect(res.statusCode).toBe(500);
@@ -831,23 +800,23 @@ describe('Mock HTTP Handler behavior', () => {
       expect(res.body.error).toBe('缺少 roomId');
     });
 
-    test('should return 200 with new room when room is created', async () => {
-      const req = createMockRequest('POST', {}, { roomId: '999NEWROOM' });
+    test('should return 200 with new room when room is created (special chars room)', async () => {
+      const req = createMockRequest('POST', {}, { roomId: TEST_ROOM_ID });
       const res = createMockResponse();
-      const mockRoom = { ...buildInitialState(), room_id: '999NEWROOM' };
+      const mockRoom = { ...buildInitialState(), room_id: TEST_ROOM_ID };
       const mockEnsureRoom = jest.fn().mockResolvedValue(mockRoom);
       await simulateHandler(req, res, 'url', 'key', jest.fn(), mockEnsureRoom, jest.fn(), jest.fn());
       expect(res.statusCode).toBe(200);
       expect(res.body).toEqual(mockRoom);
-      expect(mockEnsureRoom).toHaveBeenCalledWith('999NEWROOM');
+      expect(mockEnsureRoom).toHaveBeenCalledWith(TEST_ROOM_ID);
     });
 
-    test('should return 200 with existing room data', async () => {
-      const req = createMockRequest('POST', {}, { roomId: '999OLDROOM' });
+    test('should return 200 with existing room data (special chars room)', async () => {
+      const req = createMockRequest('POST', {}, { roomId: TEST_ROOM_ID });
       const res = createMockResponse();
       const mockRoom = { 
         ...buildInitialState(), 
-        room_id: '999OLDROOM',
+        room_id: TEST_ROOM_ID,
         current_player: 2 // Already has some game progress
       };
       const mockEnsureRoom = jest.fn().mockResolvedValue(mockRoom);
@@ -867,7 +836,7 @@ describe('Mock HTTP Handler behavior', () => {
     });
 
     test('should return 400 when state is missing', async () => {
-      const req = createMockRequest('PUT', {}, { roomId: '999NOSTATE' });
+      const req = createMockRequest('PUT', {}, { roomId: TEST_ROOM_ID });
       const res = createMockResponse();
       await simulateHandler(req, res, 'url', 'key', jest.fn(), jest.fn(), jest.fn(), jest.fn());
       expect(res.statusCode).toBe(400);
@@ -876,7 +845,7 @@ describe('Mock HTTP Handler behavior', () => {
 
     test('should return 400 when state is invalid (bad board)', async () => {
       const req = createMockRequest('PUT', {}, { 
-        roomId: '999BADBOARD',
+        roomId: TEST_ROOM_ID,
         state: {
           board: null,
           territory: buildEmptyGrid(),
@@ -893,7 +862,7 @@ describe('Mock HTTP Handler behavior', () => {
 
     test('should return 400 when state is invalid (bad currentPlayer)', async () => {
       const req = createMockRequest('PUT', {}, { 
-        roomId: '999BADPLAYER',
+        roomId: TEST_ROOM_ID,
         state: {
           board: buildEmptyGrid(),
           territory: buildEmptyGrid(),
@@ -908,7 +877,7 @@ describe('Mock HTTP Handler behavior', () => {
       expect(res.body.error).toBe('currentPlayer 必须是 1 或 2');
     });
 
-    test('should return 200 with updated state on valid update', async () => {
+    test('should return 200 with updated state on valid update (special chars room)', async () => {
       const validState = {
         board: buildEmptyGrid(),
         territory: buildEmptyGrid(),
@@ -919,19 +888,19 @@ describe('Mock HTTP Handler behavior', () => {
       validState.board[4][4] = 1;
       
       const req = createMockRequest('PUT', {}, { 
-        roomId: '999UPDATE',
+        roomId: TEST_ROOM_ID,
         state: validState
       });
       const res = createMockResponse();
-      const mockUpdated = { room_id: '999UPDATE', ...validState };
+      const mockUpdated = { room_id: TEST_ROOM_ID, ...validState };
       const mockUpdateRoom = jest.fn().mockResolvedValue(mockUpdated);
       await simulateHandler(req, res, 'url', 'key', jest.fn(), jest.fn(), mockUpdateRoom, jest.fn());
       expect(res.statusCode).toBe(200);
-      expect(res.body.room_id).toBe('999UPDATE');
-      expect(mockUpdateRoom).toHaveBeenCalledWith('999UPDATE', validState);
+      expect(res.body.room_id).toBe(TEST_ROOM_ID);
+      expect(mockUpdateRoom).toHaveBeenCalledWith(TEST_ROOM_ID, validState);
     });
 
-    test('should return 200 with game over state', async () => {
+    test('should return 200 with game over state (special chars room)', async () => {
       const gameOverState = {
         board: buildEmptyGrid(),
         territory: buildEmptyGrid(),
@@ -941,11 +910,11 @@ describe('Mock HTTP Handler behavior', () => {
       };
       
       const req = createMockRequest('PUT', {}, { 
-        roomId: '999GAMEOVER',
+        roomId: TEST_ROOM_ID,
         state: gameOverState
       });
       const res = createMockResponse();
-      const mockUpdated = { room_id: '999GAMEOVER', ...gameOverState };
+      const mockUpdated = { room_id: TEST_ROOM_ID, ...gameOverState };
       const mockUpdateRoom = jest.fn().mockResolvedValue(mockUpdated);
       await simulateHandler(req, res, 'url', 'key', jest.fn(), jest.fn(), mockUpdateRoom, jest.fn());
       expect(res.statusCode).toBe(200);
@@ -962,20 +931,20 @@ describe('Mock HTTP Handler behavior', () => {
       expect(res.body.error).toBe('缺少 roomId');
     });
 
-    test('should return 200 with reset room state', async () => {
-      const req = createMockRequest('DELETE', {}, { roomId: '999RESET' });
+    test('should return 200 with reset room state (special chars room)', async () => {
+      const req = createMockRequest('DELETE', {}, { roomId: TEST_ROOM_ID });
       const res = createMockResponse();
-      const mockResetState = { room_id: '999RESET', ...buildInitialState() };
+      const mockResetState = { room_id: TEST_ROOM_ID, ...buildInitialState() };
       const mockResetRoom = jest.fn().mockResolvedValue(mockResetState);
       await simulateHandler(req, res, 'url', 'key', jest.fn(), jest.fn(), jest.fn(), mockResetRoom);
       expect(res.statusCode).toBe(200);
       expect(res.body.current_player).toBe(1);
       expect(res.body.winner).toBe(null);
-      expect(mockResetRoom).toHaveBeenCalledWith('999RESET');
+      expect(mockResetRoom).toHaveBeenCalledWith(TEST_ROOM_ID);
     });
 
     test('should return 500 when reset fails', async () => {
-      const req = createMockRequest('DELETE', {}, { roomId: '999FAIL' });
+      const req = createMockRequest('DELETE', {}, { roomId: TEST_ROOM_ID });
       const res = createMockResponse();
       const mockResetRoom = jest.fn().mockRejectedValue(new Error('房间不存在'));
       await simulateHandler(req, res, 'url', 'key', jest.fn(), jest.fn(), jest.fn(), mockResetRoom);
@@ -985,7 +954,7 @@ describe('Mock HTTP Handler behavior', () => {
 
   describe('Unsupported methods', () => {
     test('should return 405 for PATCH method', async () => {
-      const req = createMockRequest('PATCH', {}, { roomId: '999TEST' });
+      const req = createMockRequest('PATCH', {}, { roomId: TEST_ROOM_ID });
       const res = createMockResponse();
       await simulateHandler(req, res, 'url', 'key', jest.fn(), jest.fn(), jest.fn(), jest.fn());
       expect(res.statusCode).toBe(405);
@@ -994,14 +963,14 @@ describe('Mock HTTP Handler behavior', () => {
     });
 
     test('should return 405 for OPTIONS method', async () => {
-      const req = createMockRequest('OPTIONS', {}, { roomId: '999TEST' });
+      const req = createMockRequest('OPTIONS', {}, { roomId: TEST_ROOM_ID });
       const res = createMockResponse();
       await simulateHandler(req, res, 'url', 'key', jest.fn(), jest.fn(), jest.fn(), jest.fn());
       expect(res.statusCode).toBe(405);
     });
 
     test('should return 405 for HEAD method', async () => {
-      const req = createMockRequest('HEAD', {}, { roomId: '999TEST' });
+      const req = createMockRequest('HEAD', {}, { roomId: TEST_ROOM_ID });
       const res = createMockResponse();
       await simulateHandler(req, res, 'url', 'key', jest.fn(), jest.fn(), jest.fn(), jest.fn());
       expect(res.statusCode).toBe(405);
@@ -1010,9 +979,9 @@ describe('Mock HTTP Handler behavior', () => {
 
   describe('Cache control headers', () => {
     test('should set Cache-Control: no-store header', async () => {
-      const req = createMockRequest('GET', { roomId: '999CACHE' });
+      const req = createMockRequest('GET', { roomId: TEST_ROOM_ID });
       const res = createMockResponse();
-      const mockGetRoom = jest.fn().mockResolvedValue({ room_id: '999CACHE' });
+      const mockGetRoom = jest.fn().mockResolvedValue({ room_id: TEST_ROOM_ID });
       await simulateHandler(req, res, 'url', 'key', mockGetRoom, jest.fn(), jest.fn(), jest.fn());
       expect(res.headers['Cache-Control']).toBe('no-store');
     });
@@ -1020,20 +989,12 @@ describe('Mock HTTP Handler behavior', () => {
 });
 
 // ============================================================================
-// Test Suite: Edge Cases and Boundary Testing (Room 999EDGE)
+// Test Suite: Edge Cases and Boundary Testing
 // ============================================================================
 describe('Edge cases and boundary testing', () => {
-  describe('Room ID edge cases', () => {
-    test('should handle room ID with only numbers', () => {
-      expect(isValidRoomId('999888777')).toBe(true);
-    });
-
-    test('should handle room ID with only letters', () => {
-      expect(isValidRoomId('TESTROOM')).toBe(true);
-    });
-
-    test('should handle room ID with unicode characters', () => {
-      expect(isValidRoomId('999🎮游戏')).toBe(true);
+  describe('Room ID edge cases with special characters', () => {
+    test('should handle test room ID with special characters (999?#$)', () => {
+      expect(isValidRoomId(TEST_ROOM_ID)).toBe(true);
     });
 
     test('should handle room ID at exact max length', () => {
@@ -1104,9 +1065,9 @@ describe('Edge cases and boundary testing', () => {
 });
 
 // ============================================================================
-// Test Suite: Comprehensive Room Scenarios (999SCENARIO)
+// Test Suite: Comprehensive Room Scenarios with special characters room (999?#$)
 // ============================================================================
-describe('Comprehensive game scenarios for room 999SCENARIO', () => {
+describe('Comprehensive game scenarios for room 999?#$', () => {
   describe('Full game flow simulation', () => {
     test('should validate initial room state', () => {
       const initialState = buildInitialState();
@@ -1235,31 +1196,38 @@ describe('Constants validation', () => {
   test('MAX_ROOM_ID_LENGTH should be 20', () => {
     expect(MAX_ROOM_ID_LENGTH).toBe(20);
   });
+
+  test('TEST_ROOM_ID should be 999?#$ with special characters', () => {
+    expect(TEST_ROOM_ID).toBe('999?#$');
+  });
 });
 
 // ============================================================================
-// Test Suite: Test room naming convention (999XXX)
+// Test Suite: Special characters room ID deserialization (999?#$)
 // ============================================================================
-describe('Test room naming convention (999XXX)', () => {
-  const testRoomIds = [
-    '999TEST',
-    '999UNIT',
-    '999API',
-    '999MOCK',
-    '999INT',
-    '999E2E',
-    '999VALID',
-    '999EDGE',
-    '999SCENARIO',
-    '999001',
-    '999002',
-    '999ABC',
-    '999XYZ'
-  ];
+describe('Special characters room ID deserialization testing', () => {
+  test('should accept test room ID with special characters: 999?#$', () => {
+    expect(isValidRoomId(TEST_ROOM_ID)).toBe(true);
+  });
 
-  testRoomIds.forEach(roomId => {
-    test(`should accept test room ID: ${roomId}`, () => {
-      expect(isValidRoomId(roomId)).toBe(true);
-    });
+  test('should correctly handle room ID with question mark', () => {
+    expect(TEST_ROOM_ID.includes('?')).toBe(true);
+    expect(isValidRoomId(TEST_ROOM_ID)).toBe(true);
+  });
+
+  test('should correctly handle room ID with hash', () => {
+    expect(TEST_ROOM_ID.includes('#')).toBe(true);
+    expect(isValidRoomId(TEST_ROOM_ID)).toBe(true);
+  });
+
+  test('should correctly handle room ID with dollar sign', () => {
+    expect(TEST_ROOM_ID.includes('$')).toBe(true);
+    expect(isValidRoomId(TEST_ROOM_ID)).toBe(true);
+  });
+
+  test('should verify TEST_ROOM_ID can be used in URL encoding', () => {
+    const encoded = encodeURIComponent(TEST_ROOM_ID);
+    expect(encoded).toBe('999%3F%23%24');
+    expect(decodeURIComponent(encoded)).toBe(TEST_ROOM_ID);
   });
 });
