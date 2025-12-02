@@ -1,6 +1,6 @@
 /**
  * Comprehensive tests for serverless game API (api/game.js)
- * Uses test room number "999?#$" with special characters to test deserialization
+ * Uses test room number "999?#$" with special characters to test URL encoding/decoding
  */
 
 const BOARD_SIZE = 9;
