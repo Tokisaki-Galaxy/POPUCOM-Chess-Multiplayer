@@ -1,9 +1,17 @@
 {
   "name": "paom-chess",
   "version": "1.0.0",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
+  },
   "dependencies": {
     "@upstash/ratelimit": "^1.0.0",
     "@upstash/redis": "^1.28.0",
     "@vercel/edge": "^1.1.1"
+  },
+  "devDependencies": {
+    "jest": "^30.2.0"
   }
 }
