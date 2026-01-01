@@ -70,6 +70,11 @@ function validateState(state) {
 export default async function handler(request, response) {
   response.setHeader('Cache-Control', 'no-store');
 
+  if (request.method === 'OPTIONS') {
+    response.status(200).end();
+    return;
+  }
+
   if (!supabaseUrl || !supabaseKey) {
     response.status(500).json({ error: '缺少 Supabase 配置，请检查环境变量' });
     return;
