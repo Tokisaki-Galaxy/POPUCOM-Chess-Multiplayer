@@ -81,6 +81,12 @@ export default async function handler(request, response) {
   }
 
   const roomId = request.method === 'GET' ? request.query?.roomId : request.body?.roomId;
+  
+  if (request.method === 'GET' && request.query?.action === 'ping') {
+    response.status(200).json({ status: 'ok' });
+    return;
+  }
+
   if (!roomId) {
     response.status(400).json({ error: '缺少 roomId' });
     return;

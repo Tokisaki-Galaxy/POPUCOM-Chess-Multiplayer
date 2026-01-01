@@ -1,8 +1,27 @@
 const APP_ROOT_ID = 'app';
 const BOARD_SIZE = 9;
 const MAX_MOVES = 50;
-const GAME_API_BASE = '/api/game';
+let GAME_API_BASE = '/api/game';
+const FALLBACK_API_BASE = 'https://pop.tokisaki.top/api/game';
 const POLL_INTERVAL_MS = 2000;
+
+async function detectBackend() {
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 1500);
+        const response = await fetch(GAME_API_BASE + '?action=ping', { 
+            method: 'GET',
+            signal: controller.signal 
+        });
+        clearTimeout(timeoutId);
+        if (!response.ok) {
+            throw new Error('Local API not responding');
+        }
+    } catch (e) {
+        console.warn('Local API unavailable, falling back to remote:', FALLBACK_API_BASE);
+        GAME_API_BASE = FALLBACK_API_BASE;
+    }
+}
 
 const templates = {
     mainMenu: `
@@ -69,6 +88,7 @@ const rootElement = document.getElementById(APP_ROOT_ID);
 
 (async function bootstrap() {
     try {
+        await detectBackend();
         injectRemoteMarkup();
         attachExportButton();
     } catch (error) {
