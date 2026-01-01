@@ -71,13 +71,13 @@ const rootElement = document.getElementById(APP_ROOT_ID);
 
 (async function bootstrap() {
     try {
-        // Initialize i18n and update page language
+        // Initialize i18n system: detect/load saved language and update page title/lang attribute
         i18n.updatePageLanguage();
         injectRemoteMarkup();
         attachExportButton();
         attachLanguageSelector();
     } catch (error) {
-        console.error('UI 加载失败:', error);
+        console.error('UI initialization failed:', error);
         if (rootElement) {
             rootElement.innerHTML = `<div class="loading-error" data-i18n="page.loadError">${i18n.t('page.loadError')}</div>`;
         }
@@ -85,7 +85,7 @@ const rootElement = document.getElementById(APP_ROOT_ID);
 })();
 
 function injectRemoteMarkup() {
-    if (!rootElement) throw new Error('找不到挂载节点');
+    if (!rootElement) throw new Error('Root element not found');
     rootElement.innerHTML = `${templates.mainMenu()}${templates.lobby()}${templates.game()}`;
 }
 
@@ -483,7 +483,7 @@ class OnlineGame extends BaseGame {
             this.init();
             this.startPolling();
         } catch (error) {
-            console.error('在线模式初始化失败:', error);
+            console.error('Online mode initialization failed:', error);
             alert(error.message || i18n.t('alert.onlineInitFailed'));
             location.reload();
         }
@@ -498,7 +498,7 @@ class OnlineGame extends BaseGame {
                     this.syncState(latest);
                 }
             } catch (error) {
-                console.error('轮询失败:', error);
+                console.error('Polling failed:', error);
             }
         }, POLL_INTERVAL_MS);
     }
@@ -545,7 +545,7 @@ class OnlineGame extends BaseGame {
                 this.startPolling();
             }
         } catch (error) {
-            console.error('重置房间失败:', error);
+            console.error('Room reset failed:', error);
             alert(error.message || i18n.t('alert.resetFailed'));
         }
     }
@@ -591,7 +591,7 @@ class OnlineGame extends BaseGame {
                 this.stopPolling();
             }
         } catch (error) {
-            console.error('同步服务器失败:', error);
+            console.error('Server sync failed:', error);
             alert(i18n.t('alert.syncFailed'));
         }
     }
@@ -658,7 +658,7 @@ function exportMatchImage() {
         btn.style.display = 'flex';
         document.body.style.cursor = 'default';
     }).catch(err => {
-        console.error('截图失败:', err);
+        console.error('Screenshot failed:', err);
         alert(i18n.t('alert.screenshotFailed'));
         btn.style.display = 'flex';
         document.body.style.cursor = 'default';
