@@ -407,6 +407,11 @@ input.room-input {
     right: auto;
     bottom: auto;
     margin: 0;
+    background: var(--btn-color);
+}
+
+.lang-btn:hover {
+    background: var(--btn-hover);
 }
 
 .lang-dropdown {
@@ -462,12 +467,22 @@ input.room-input {
         top: 10px;
         right: 10px;
     }
-    
+
     .lang-btn {
         padding: 10px 15px;
         font-size: 0.85rem;
+        position: relative;
+        top: auto;
+        right: auto;
+        bottom: auto;
+        margin: 0;
+        background: var(--btn-color);
     }
-    
+
+    .lang-btn:hover {
+        background: var(--btn-hover);
+    }
+
     .lang-dropdown {
         min-width: 130px;
     }
