@@ -275,8 +275,8 @@ class I18n {
     t(key, params = {}) {
         const translation = this.translations[this.currentLang]?.[key] || this.translations['zh-CN'][key] || key;
         
-        // Replace parameters like {player}, {color}
-        return translation.replace(/\{(\w+)\}/g, (match, param) => {
+        // Replace parameters like {player}, {color}, {param-name}
+        return translation.replace(/\{([^}]+)\}/g, (match, param) => {
             return params[param] !== undefined ? params[param] : match;
         });
     }
