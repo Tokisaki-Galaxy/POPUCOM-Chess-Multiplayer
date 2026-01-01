@@ -392,3 +392,83 @@ input.room-input {
 .reset-room-btn:active {
     transform: scale(0.98);
 }
+
+/* Language Selector Styles */
+.lang-selector {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1001;
+}
+
+.lang-btn {
+    position: relative;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    margin: 0;
+}
+
+.lang-dropdown {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    background: rgba(28, 35, 43, 0.95);
+    border: 2px solid var(--grid-color);
+    border-radius: 10px;
+    padding: 8px;
+    min-width: 150px;
+    display: none;
+    flex-direction: column;
+    gap: 5px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.lang-dropdown.show {
+    display: flex;
+}
+
+.lang-option {
+    background: transparent;
+    color: var(--text-color);
+    border: 1px solid transparent;
+    padding: 10px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.9rem;
+    text-align: left;
+    font-family: 'Segoe UI', 'Microsoft YaHei', system-ui, sans-serif;
+}
+
+.lang-option:hover {
+    background: var(--btn-color);
+    border-color: var(--btn-hover);
+}
+
+.lang-option.active {
+    background: var(--btn-color);
+    border-color: var(--highlight);
+    font-weight: bold;
+}
+
+.lang-option:active {
+    transform: scale(0.98);
+}
+
+/* Responsive adjustments for language selector */
+@media (max-width: 768px) {
+    .lang-selector {
+        top: 10px;
+        right: 10px;
+    }
+    
+    .lang-btn {
+        padding: 10px 15px;
+        font-size: 0.85rem;
+    }
+    
+    .lang-dropdown {
+        min-width: 130px;
+    }
+}
