@@ -1,3 +1,5 @@
+import { i18n } from './i18n.js';
+
 const APP_ROOT_ID = 'app';
 const BOARD_SIZE = 9;
 const MAX_MOVES = 50;
@@ -24,61 +26,61 @@ async function detectBackend() {
 }
 
 const templates = {
-    mainMenu: `
+    mainMenu: () => `
         <div id="main-menu" class="screen-overlay">
             <div class="menu-card">
-                <h2>泡姆三消棋</h2>
-                <button class="menu-btn" onclick="ui.showLocalGame()">单人练习 / 本地对战</button>
-                <button class="menu-btn" onclick="ui.showLobby()">多人在线联机</button>
+                <h2 data-i18n="menu.title">${i18n.t('menu.title')}</h2>
+                <button class="menu-btn" onclick="ui.showLocalGame()" data-i18n="menu.localGame">${i18n.t('menu.localGame')}</button>
+                <button class="menu-btn" onclick="ui.showLobby()" data-i18n="menu.onlineGame">${i18n.t('menu.onlineGame')}</button>
                 <div class="rules">
-                    <p>断线不会导致数据清空，输入相同的房间号就回来了。</p>
-                    <p>由于服务器大小限制，48小时内不活跃的房间将在每天北京时间(UTC+8) 4:00清空！</p>
-                    <h2>规则速览</h2>
+                    <p data-i18n="menu.disconnectInfo">${i18n.t('menu.disconnectInfo')}</p>
+                    <p data-i18n="menu.cleanupInfo">${i18n.t('menu.cleanupInfo')}</p>
+                    <h2 data-i18n="menu.rulesTitle">${i18n.t('menu.rulesTitle')}</h2>
                     <ul>
-                        <li>棋盘大小：9 × 9。</li>
-                        <li>己方三颗棋子连成直线（横 / 竖 / 两种对角线）后，该三颗棋子消除。</li>
-                        <li>形成的那条线以及向两端延伸，直至被敌方棋子阻挡的同方向格子，标记为己方领地。</li>
-                        <li>领地可以被后续对方再次覆盖。</li>
-                        <li>落子只能放在未被敌方占领的格子（即中立格或己方领地）。</li>
-                        <li>若延伸方向遇到敌方棋子，领地延伸立即停止。</li>
-                        <li>双方总共走满 50 步后比较领地格数，多者胜；相同则平局。</li>
+                        <li data-i18n="menu.rule1">${i18n.t('menu.rule1')}</li>
+                        <li data-i18n="menu.rule2">${i18n.t('menu.rule2')}</li>
+                        <li data-i18n="menu.rule3">${i18n.t('menu.rule3')}</li>
+                        <li data-i18n="menu.rule4">${i18n.t('menu.rule4')}</li>
+                        <li data-i18n="menu.rule5">${i18n.t('menu.rule5')}</li>
+                        <li data-i18n="menu.rule6">${i18n.t('menu.rule6')}</li>
+                        <li data-i18n="menu.rule7">${i18n.t('menu.rule7')}</li>
                     </ul>
                 </div>
             </div>
         </div>
     `,
-    lobby: `
+    lobby: () => `
         <div id="online-lobby" class="screen-overlay hidden">
             <div class="menu-card">
-                <h2>在线大厅</h2>
-                <input type="text" id="room-id" class="room-input" placeholder="输入房间号 (例: 666ABC)" maxlength="10">
-                <button class="menu-btn" onclick="ui.joinOnlineGame(1)">我是玩家 1 (红 - 先手)</button>
-                <button class="menu-btn" onclick="ui.joinOnlineGame(2)">我是玩家 2 (蓝 - 后手)</button>
-                <button class="menu-btn secondary" onclick="ui.showMainMenu()">返回主菜单</button>
+                <h2 data-i18n="lobby.title">${i18n.t('lobby.title')}</h2>
+                <input type="text" id="room-id" class="room-input" placeholder="${i18n.t('lobby.roomPlaceholder')}" maxlength="10" data-i18n-placeholder="lobby.roomPlaceholder">
+                <button class="menu-btn" onclick="ui.joinOnlineGame(1)" data-i18n="lobby.joinAsP1">${i18n.t('lobby.joinAsP1')}</button>
+                <button class="menu-btn" onclick="ui.joinOnlineGame(2)" data-i18n="lobby.joinAsP2">${i18n.t('lobby.joinAsP2')}</button>
+                <button class="menu-btn secondary" onclick="ui.showMainMenu()" data-i18n="lobby.backToMenu">${i18n.t('lobby.backToMenu')}</button>
             </div>
         </div>
     `,
-    game: `
+    game: () => `
         <div id="game-container" class="hidden">
-            <button class="back-btn" onclick="location.reload()">退出</button>
-            <h1>泡姆三消棋</h1>
+            <button class="back-btn" onclick="location.reload()" data-i18n="game.exit">${i18n.t('game.exit')}</button>
+            <h1 data-i18n="game.title">${i18n.t('game.title')}</h1>
             <div class="status-bar">
                 <div class="player-indicator" id="p1-indicator">
                     <span class="dot p1"></span>
-                    <span class="p1-text">玩家1: <span id="score-p1">0</span></span>
+                    <span class="p1-text"><span data-i18n="game.player1">${i18n.t('game.player1')}</span>: <span id="score-p1">0</span></span>
                 </div>
                 <div class="player-indicator" id="p2-indicator">
                     <span class="dot p2"></span>
-                    <span class="p2-text">玩家2: <span id="score-p2">0</span></span>
+                    <span class="p2-text"><span data-i18n="game.player2">${i18n.t('game.player2')}</span>: <span id="score-p2">0</span></span>
                 </div>
             </div>
             <div class="board-container">
                 <div class="board" id="game-board"></div>
             </div>
             <div class="info-panel">
-                <div id="turn-text">准备就绪</div>
-                <div class="moves-left">剩余步数: <span id="moves-count">50</span></div>
-                <button class="reset-room-btn hidden" id="reset-room-btn" onclick="ui.resetCurrentRoom()">🔄 重置房间 (再来一局)</button>
+                <div id="turn-text" data-i18n="game.ready">${i18n.t('game.ready')}</div>
+                <div class="moves-left"><span data-i18n="game.movesLeft">${i18n.t('game.movesLeft')}</span>: <span id="moves-count">50</span></div>
+                <button class="reset-room-btn hidden" id="reset-room-btn" onclick="ui.resetCurrentRoom()" data-i18n="game.resetRoom">${i18n.t('game.resetRoom')}</button>
             </div>
         </div>
     `
@@ -88,27 +90,31 @@ const rootElement = document.getElementById(APP_ROOT_ID);
 
 (async function bootstrap() {
     try {
+        // Initialize i18n system: detect/load saved language and update page title/lang attribute
+        i18n.updatePageLanguage();
         await detectBackend();
         injectRemoteMarkup();
         attachExportButton();
+        attachLanguageSelector();
     } catch (error) {
-        console.error('UI 加载失败:', error);
+        console.error('UI initialization failed:', error);
         if (rootElement) {
-            rootElement.innerHTML = '<div class="loading-error">界面加载失败，请刷新重试</div>';
+            rootElement.innerHTML = `<div class="loading-error" data-i18n="page.loadError">${i18n.t('page.loadError')}</div>`;
         }
     }
 })();
 
 function injectRemoteMarkup() {
-    if (!rootElement) throw new Error('找不到挂载节点');
-    rootElement.innerHTML = `${templates.mainMenu}${templates.lobby}${templates.game}`;
+    if (!rootElement) throw new Error('Root element not found');
+    rootElement.innerHTML = `${templates.mainMenu()}${templates.lobby()}${templates.game()}`;
 }
 
 function attachExportButton() {
     if (!document.querySelector('.github-btn')) {
         const githubBtn = document.createElement('button');
         githubBtn.className = 'floating-btn github-btn';
-        githubBtn.innerHTML = '🌟 GitHub 项目';
+        githubBtn.innerHTML = i18n.t('btn.github');
+        githubBtn.setAttribute('data-i18n', 'btn.github');
         githubBtn.onclick = () => {
             window.open('https://github.com/Tokisaki-Galaxy/POPUCOM-Chess-Multiplayer', '_blank', 'noopener');
         };
@@ -118,10 +124,118 @@ function attachExportButton() {
     if (!document.querySelector('.export-btn')) {
         const exportBtn = document.createElement('button');
         exportBtn.className = 'floating-btn export-btn';
-        exportBtn.innerHTML = '📷 截图';
+        exportBtn.innerHTML = i18n.t('btn.screenshot');
+        exportBtn.setAttribute('data-i18n', 'btn.screenshot');
         exportBtn.onclick = exportMatchImage;
         document.body.appendChild(exportBtn);
     }
+}
+
+function attachLanguageSelector() {
+    if (!document.querySelector('.lang-selector')) {
+        const langSelector = document.createElement('div');
+        langSelector.className = 'lang-selector';
+        
+        const langBtn = document.createElement('button');
+        langBtn.className = 'floating-btn lang-btn';
+        langBtn.innerHTML = i18n.t('lang.selector');
+        langBtn.setAttribute('data-i18n', 'lang.selector');
+        langBtn.onclick = () => {
+            langDropdown.classList.toggle('show');
+        };
+        
+        const langDropdown = document.createElement('div');
+        langDropdown.className = 'lang-dropdown';
+        
+        const languages = [
+            { code: 'zh-CN', label: i18n.t('lang.zhCN') },
+            { code: 'en', label: i18n.t('lang.en') },
+            { code: 'ja', label: i18n.t('lang.ja') }
+        ];
+        
+        languages.forEach(lang => {
+            const langOption = document.createElement('button');
+            langOption.className = 'lang-option';
+            langOption.textContent = lang.label;
+            langOption.setAttribute('data-lang', lang.code);
+            if (i18n.getLanguage() === lang.code) {
+                langOption.classList.add('active');
+            }
+            langOption.onclick = () => {
+                i18n.setLanguage(lang.code);
+                updateAllTranslations();
+                langDropdown.classList.remove('show');
+                // Update active state
+                langDropdown.querySelectorAll('.lang-option').forEach(opt => opt.classList.remove('active'));
+                langOption.classList.add('active');
+            };
+            langDropdown.appendChild(langOption);
+        });
+        
+        langSelector.appendChild(langBtn);
+        langSelector.appendChild(langDropdown);
+        document.body.appendChild(langSelector);
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!langSelector.contains(e.target)) {
+                langDropdown.classList.remove('show');
+            }
+        });
+    }
+}
+
+function updateAllTranslations() {
+    // Update document title and lang attribute
+    i18n.updatePageLanguage();
+    
+    // Re-render templates
+    injectRemoteMarkup();
+    
+    // Re-initialize current game if exists
+    if (window.currentGame) {
+        const gameContainer = document.getElementById('game-container');
+        const isGameActive = gameContainer && !gameContainer.classList.contains('hidden');
+        
+        if (isGameActive) {
+            // Preserve game state while updating UI text
+            const tempGame = window.currentGame;
+            if (tempGame instanceof LocalGame) {
+                window.currentGame = new LocalGame();
+                window.currentGame.board = tempGame.board;
+                window.currentGame.territory = tempGame.territory;
+                window.currentGame.currentPlayer = tempGame.currentPlayer;
+                window.currentGame.totalMoves = tempGame.totalMoves;
+                window.currentGame.gameOver = tempGame.gameOver;
+                window.currentGame.winner = tempGame.winner;
+                window.currentGame.lastMovePos = tempGame.lastMovePos;
+                window.currentGame.init();
+            } else if (tempGame instanceof OnlineGame) {
+                // For online game, just update the UI
+                tempGame.updateUI();
+                tempGame.updateBoardVisuals();
+            }
+        } else {
+            // Re-show the appropriate screen
+            const mainMenu = document.getElementById('main-menu');
+            const lobby = document.getElementById('online-lobby');
+            
+            if (mainMenu && !mainMenu.classList.contains('hidden')) {
+                ui.showMainMenu();
+            } else if (lobby && !lobby.classList.contains('hidden')) {
+                ui.showLobby();
+            }
+        }
+    }
+    
+    // Update floating buttons
+    const githubBtn = document.querySelector('.github-btn');
+    const exportBtn = document.querySelector('.export-btn');
+    const langBtn = document.querySelector('.lang-btn');
+    
+    if (githubBtn) githubBtn.innerHTML = i18n.t('btn.github');
+    if (exportBtn) exportBtn.innerHTML = i18n.t('btn.screenshot');
+    if (langBtn) langBtn.innerHTML = i18n.t('lang.selector');
 }
 
 async function requestJson(url, options = {}, { allow404 = false } = {}) {
@@ -132,7 +246,7 @@ async function requestJson(url, options = {}, { allow404 = false } = {}) {
     const hasBody = response.status !== 204;
     const payload = hasBody ? await response.json().catch(() => null) : null;
     if (!response.ok) {
-        const message = payload?.error || payload?.message || '请求失败';
+        const message = payload?.error || payload?.message || i18n.t('alert.syncFailed');
         throw new Error(message);
     }
     return payload;
@@ -316,9 +430,14 @@ class BaseGame {
 
         let statusMsg = '';
         if (this.gameOver) {
-            statusMsg = this.winner === 0 ? '游戏结束: 平局' : `游戏结束: 玩家${this.winner} 获胜!`;
+            if (this.winner === 0) {
+                statusMsg = `${i18n.t('status.gameOver')}: ${i18n.t('status.draw')}`;
+            } else {
+                statusMsg = `${i18n.t('status.gameOver')}: ${i18n.t('status.playerWins', { player: this.winner })}`;
+            }
         } else {
-            statusMsg = `当前回合: 玩家${this.currentPlayer} (${this.currentPlayer === 1 ? '红' : '蓝'})`;
+            const color = this.currentPlayer === 1 ? i18n.t('status.red') : i18n.t('status.blue');
+            statusMsg = i18n.t('status.currentTurn', { player: this.currentPlayer, color });
         }
 
         let statusColor;
@@ -369,14 +488,14 @@ class OnlineGame extends BaseGame {
     }
 
     async initOnline() {
-        this.turnTextEl.textContent = '正在连接服务器...';
+        this.turnTextEl.textContent = i18n.t('status.connecting');
         try {
             let state;
             if (this.myRole === 1) {
                 state = await ensureRoom(this.roomId);
             } else {
                 state = await fetchGameState(this.roomId);
-                if (!state) throw new Error('房间不存在，请让玩家1先创建');
+                if (!state) throw new Error(i18n.t('alert.roomNotExist'));
             }
             if (state) {
                 this.syncState(state);
@@ -384,8 +503,8 @@ class OnlineGame extends BaseGame {
             this.init();
             this.startPolling();
         } catch (error) {
-            console.error('在线模式初始化失败:', error);
-            alert(error.message || '在线模式初始化失败');
+            console.error('Online mode initialization failed:', error);
+            alert(error.message || i18n.t('alert.onlineInitFailed'));
             location.reload();
         }
     }
@@ -399,7 +518,7 @@ class OnlineGame extends BaseGame {
                     this.syncState(latest);
                 }
             } catch (error) {
-                console.error('轮询失败:', error);
+                console.error('Polling failed:', error);
             }
         }, POLL_INTERVAL_MS);
     }
@@ -438,7 +557,7 @@ class OnlineGame extends BaseGame {
 
     async resetRoom() {
         try {
-            this.turnTextEl.textContent = '正在重置房间...';
+            this.turnTextEl.textContent = i18n.t('status.resetting');
             const state = await resetRoomState(this.roomId);
             if (state) {
                 this.syncState(state);
@@ -446,15 +565,15 @@ class OnlineGame extends BaseGame {
                 this.startPolling();
             }
         } catch (error) {
-            console.error('重置房间失败:', error);
-            alert(error.message || '重置房间失败，请稍后重试');
+            console.error('Room reset failed:', error);
+            alert(error.message || i18n.t('alert.resetFailed'));
         }
     }
 
     async handleClick(row, col) {
         if (this.gameOver) return;
         if (this.currentPlayer !== this.myRole) {
-            alert('还没轮到你！');
+            alert(i18n.t('alert.notYourTurn'));
             return;
         }
         if (this.board[row][col] !== 0) return;
@@ -492,8 +611,8 @@ class OnlineGame extends BaseGame {
                 this.stopPolling();
             }
         } catch (error) {
-            console.error('同步服务器失败:', error);
-            alert('同步服务器失败，请稍后再试');
+            console.error('Server sync failed:', error);
+            alert(i18n.t('alert.syncFailed'));
         }
     }
 }
@@ -525,7 +644,7 @@ const ui = {
     },
     joinOnlineGame: role => {
         const roomId = document.getElementById('room-id')?.value.trim();
-        if (!roomId) return alert('请输入房间号！');
+        if (!roomId) return alert(i18n.t('alert.roomRequired'));
         resetCurrentGame();
         document.getElementById('online-lobby')?.classList.add('hidden');
         document.getElementById('game-container')?.classList.remove('hidden');
@@ -553,14 +672,14 @@ function exportMatchImage() {
         const link = document.createElement('a');
         const date = new Date();
         const timeStr = `${date.getFullYear()}${date.getMonth() + 1}${date.getDate()}_${date.getHours()}${date.getMinutes()}`;
-        link.download = `泡姆三消棋_战绩_${timeStr}.png`;
+        link.download = `${i18n.t('screenshot.filename')}_${timeStr}.png`;
         link.href = canvas.toDataURL();
         link.click();
         btn.style.display = 'flex';
         document.body.style.cursor = 'default';
     }).catch(err => {
-        console.error('截图失败:', err);
-        alert('截图失败，请重试');
+        console.error('Screenshot failed:', err);
+        alert(i18n.t('alert.screenshotFailed'));
         btn.style.display = 'flex';
         document.body.style.cursor = 'default';
     });
