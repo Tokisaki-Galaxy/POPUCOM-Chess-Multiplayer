@@ -6,6 +6,9 @@
 
 泡姆泡姆三消棋的重制版，**现推荐使用无服务器（Serverless）部署**，开箱即用。传统 Python 服务器 + 客户端链路仍可使用，但不再推荐普通玩家自行搭建。棋逻辑仍由 [`server.GameEngine`](server.py) 统一复用，Python 客户端 UI 由 [`client.RemoteGame`](client.py) 驱动。
 
+![Game Screenshot1](image/1.jpg)
+![Game Screenshot2](image/2.jpg)
+
 ## 功能亮点
 - ✅ 9×9 棋盘、原汁原味规则与三消占领机制
 - ✅ 本地双人热座 + 在线房间对战
