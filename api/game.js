@@ -1,7 +1,8 @@
 const BOARD_SIZE = 9;
 const MAX_ROOM_ID_LENGTH = 20;
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
+// 必须使用 service_role key，因为已启用 RLS
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const tableEndpoint = supabaseUrl ? `${supabaseUrl}/rest/v1/games` : '';
 
 const defaultError = '服务器内部错误，请稍后重试';
